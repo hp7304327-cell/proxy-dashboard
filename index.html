@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Proxy Success &amp; Failure Metrics | v4</title>
+  <title>Proxy Success &amp; Failure Metrics | v5</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
   <style>
@@ -46,20 +46,21 @@
     .view-tab { padding:5px 14px; border-radius:6px; font-size:12px; font-weight:600; color:#6b7280; cursor:pointer; border:none; background:transparent; transition:all .15s; }
     .view-tab.active { background:#fff; color:#4361ee; box-shadow:0 1px 3px rgba(0,0,0,.1); }
 
-    /* ── Multi-date selector ── */
+    /* ── Multi-date selector (select element) ── */
     .multi-date-wrap { display:none; flex-direction:column; gap:6px; }
     .multi-date-wrap.visible { display:flex; }
-    .date-checkbox-list { max-height:160px; overflow-y:auto; border:1.5px solid #e5e7eb; border-radius:8px; background:#fff; padding:6px 0; }
-    .date-checkbox-item { display:flex; align-items:center; gap:8px; padding:5px 12px; cursor:pointer; font-size:12px; font-weight:500; color:#374151; }
-    .date-checkbox-item:hover { background:#f9fafb; }
-    .date-checkbox-item input[type=checkbox] { accent-color:#4361ee; width:14px; height:14px; flex-shrink:0; cursor:pointer; }
-    .multi-date-actions { display:flex; gap:6px; }
+    .multi-date-actions { display:flex; gap:6px; align-items:center; }
     .multi-btn { padding:5px 12px; border-radius:7px; font-size:11px; font-weight:600; cursor:pointer; border:1.5px solid #e5e7eb; background:#fff; color:#4361ee; transition:all .15s; }
     .multi-btn:hover { background:#eff6ff; }
     .multi-btn.clear-btn { color:#ea580c; }
     .multi-btn.clear-btn:hover { background:#fff7ed; }
     .multi-limit-msg { font-size:11px; color:#ea580c; display:none; }
     .multi-limit-msg.visible { display:block; }
+
+    /* ── Refresh button ── */
+    .refresh-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border:1.5px solid #e5e7eb; border-radius:8px; background:#fff; font-size:12px; font-weight:600; color:#374151; cursor:pointer; transition:all .15s; }
+    .refresh-btn:hover { background:#f3f4f6; border-color:#d1d5db; }
+    .refresh-btn.loading svg { animation: spin .7s linear infinite; }
 
     /* ── Loading / Error states ── */
     .state-box {
@@ -99,18 +100,23 @@
     .summary-table { width:100%; border-collapse:collapse; }
     .summary-table thead tr { background:#f9fafb; border-bottom:2px solid #e5e7eb; }
     .summary-table thead th { padding:10px 16px; text-align:left; font-size:10px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:.7px; white-space:nowrap; }
-    .th-market{width:38%;} .th-num{width:10%;text-align:right;} .th-rate{width:22%;}
+    .th-market { width:38%; }
+    .th-num { width:10%; text-align:center; }
+    .th-rate { width:22%; text-align:center; }
     .summary-row { border-bottom:1px solid #f3f4f6; cursor:pointer; transition:background .12s; }
     .summary-row:hover { background:#f9fafb; }
     .row-good:hover{background:#f0fdf4;} .row-warn:hover{background:#fefce8;} .row-bad:hover{background:#fff7ed;}
-    .td-market{padding:12px 16px;} .td-num{padding:12px 16px;text-align:right;font-size:13px;font-variant-numeric:tabular-nums;} .td-apis{color:#6b7280;} .td-rate{padding:12px 16px;}
+    .td-market { padding:12px 16px; }
+    .td-num { padding:12px 16px; text-align:center; font-size:13px; font-variant-numeric:tabular-nums; }
+    .td-apis { color:#6b7280; }
+    .td-rate { padding:12px 16px; text-align:center; }
     .row-left { display:flex; align-items:center; gap:10px; }
     .row-chevron { width:20px; height:20px; display:flex; align-items:center; justify-content:center; color:#9ca3af; transition:transform .25s; flex-shrink:0; }
     .row-chevron.open { transform:rotate(90deg); }
     .row-badge { width:32px; height:32px; border-radius:8px; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; letter-spacing:.3px; }
     .row-market-name { font-size:13px; font-weight:700; color:#111827; letter-spacing:.2px; }
-    .rate-cell { display:flex; align-items:center; gap:10px; }
-    .rate-bar-wrap { flex:1; height:6px; background:#e5e7eb; border-radius:3px; overflow:hidden; min-width:60px; }
+    .rate-cell { display:flex; align-items:center; justify-content:center; gap:10px; }
+    .rate-bar-wrap { width:80px; max-width:80px; height:6px; background:#e5e7eb; border-radius:3px; overflow:hidden; flex-shrink:0; }
     .rate-bar { height:100%; border-radius:3px; }
     .rate-text { font-size:12px; font-weight:700; width:42px; text-align:right; white-space:nowrap; }
 
@@ -183,17 +189,26 @@
           <option value="" disabled selected>Loading dates…</option>
         </select>
       </div>
-      <!-- Multi date selector (trend mode) -->
+      <!-- Multi date selector (trend mode) — multi-select dropdown -->
       <div class="multi-date-wrap" id="multi-date-wrap">
         <div class="multi-date-actions">
           <button class="multi-btn" onclick="selectLast7()">Last 7 Days</button>
           <button class="multi-btn clear-btn" onclick="clearDates()">Clear</button>
           <span class="multi-limit-msg" id="limitMsg">Max 7 dates</span>
         </div>
-        <div class="date-checkbox-list" id="dateCheckboxList">
+        <select id="multiDateSelect" multiple size="5" onchange="onMultiDateChange()" style="width:180px; border:1.5px solid #d1d5db; border-radius:8px; font-size:12px; font-weight:600; color:#374151; background:#fff; padding:4px 0; outline:none;">
           <!-- populated by JS -->
-        </div>
+        </select>
+        <div style="font-size:10px; color:#9ca3af; margin-top:2px;">Hold Ctrl/Cmd to select multiple (max 7)</div>
       </div>
+      <!-- Refresh button -->
+      <button class="refresh-btn" onclick="refreshData()" title="Refresh data from Google Sheets">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        Refresh
+      </button>
     </div>
   </header>
 
@@ -240,6 +255,13 @@
     let allExpanded    = false;
     let viewMode       = 'single';   // 'single' | 'trend'
     let selectedDates  = [];         // for trend mode
+
+    // ── Number formatter: K / M ───────────────────────────────────────────────
+    function fmtNum(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+      if (n >= 1000)    return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+      return n.toString();
+    }
 
     // ── Fetch sheet data via Google Sheets API v4 ─────────────────────────────
     async function fetchSheetData() {
@@ -340,8 +362,8 @@
       document.getElementById('kpiStrip').innerHTML = `
         <div class="kpi-card"><div class="kpi-icon ki-m">🌐</div><div><div class="kpi-val">${markets.length}</div><div class="kpi-lbl">Markets</div></div></div>
         <div class="kpi-card"><div class="kpi-icon ki-a">⚡</div><div><div class="kpi-val">${totalAPIs}</div><div class="kpi-lbl">APIs</div></div></div>
-        <div class="kpi-card"><div class="kpi-icon ki-s">✅</div><div><div class="kpi-val" style="color:#16a34a">${totalSuccess.toLocaleString()}</div><div class="kpi-lbl">Success Attempts</div></div></div>
-        <div class="kpi-card"><div class="kpi-icon ki-f">❌</div><div><div class="kpi-val" style="color:#ea580c">${totalFailed.toLocaleString()}</div><div class="kpi-lbl">Failed Attempts</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon ki-s">✅</div><div><div class="kpi-val" style="color:#16a34a">${fmtNum(totalSuccess)}</div><div class="kpi-lbl">Success Attempts</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon ki-f">❌</div><div><div class="kpi-val" style="color:#ea580c">${fmtNum(totalFailed)}</div><div class="kpi-lbl">Failed Attempts</div></div></div>
         <div class="kpi-card"><div class="kpi-icon ki-r">%</div><div><div class="kpi-val" style="color:#4361ee">${rate}%</div><div class="kpi-lbl">Overall Success Rate</div></div></div>
       `;
     }
@@ -355,6 +377,7 @@
       initialised    = {};
       allExpanded    = false;
 
+      // Sort ascending by success rate (0% first = most failures at top)
       const sorted = [...markets].sort((a, b) => {
         const rate = mkt => {
           let s = 0, f = 0;
@@ -363,9 +386,9 @@
             f += api.failed.reduce( (x,i) => x + i.count, 0);
           }
           const t = s + f;
-          return t > 0 ? s / t : 0;
+          return t > 0 ? s / t : 1; // if no data, put at bottom
         };
-        return rate(b) - rate(a);
+        return rate(a) - rate(b); // ascending: worst first
       });
 
       let summaryRows = '';
@@ -429,10 +452,10 @@
               <div class="api-card-header">
                 <div class="api-title"><span class="api-bolt">⚡</span><span class="api-name-text">${escHtml(api.api)}</span></div>
                 <div class="api-pills">
-                  <span class="pill pill-success">✓ ${aSuccess.toLocaleString()} success</span>
-                  <span class="pill pill-failed">✗ ${aFailed.toLocaleString()} failed</span>
+                  <span class="pill pill-success">✓ ${fmtNum(aSuccess)} success</span>
+                  <span class="pill pill-failed">✗ ${fmtNum(aFailed)} failed</span>
                   <span class="pill ${rateClass}">${aRate}% success rate</span>
-                  <span class="pill pill-total">Σ ${aTotal.toLocaleString()} total</span>
+                  <span class="pill pill-total">Σ ${fmtNum(aTotal)} total</span>
                 </div>
               </div>
               <div class="charts-grid">
@@ -460,8 +483,8 @@
               </div>
             </td>
             <td class="td-num td-apis">${market.apis.length}</td>
-            <td class="td-num td-success" style="color:#16a34a;font-weight:700">${mSuccess.toLocaleString()}</td>
-            <td class="td-num td-failed"  style="color:#ea580c;font-weight:700">${mFailed.toLocaleString()}</td>
+            <td class="td-num td-success" style="color:#16a34a;font-weight:700">${fmtNum(mSuccess)}</td>
+            <td class="td-num td-failed"  style="color:#ea580c;font-weight:700">${fmtNum(mFailed)}</td>
             <td class="td-rate">
               <div class="rate-cell">
                 <div class="rate-bar-wrap"><div class="rate-bar" style="width:${Math.min(100,mRateNum)}%;background:${rateColor}"></div></div>
@@ -481,7 +504,7 @@
           <div class="table-section-header">
             <div>
               <div class="table-section-title">Market Overview</div>
-              <div class="table-section-sub">Click any row to expand charts &nbsp;·&nbsp; Sorted by success rate &nbsp;·&nbsp; Date: <strong>${selectedDate}</strong></div>
+              <div class="table-section-sub">Click any row to expand charts &nbsp;·&nbsp; Sorted by success rate (worst first) &nbsp;·&nbsp; Date: <strong>${selectedDate}</strong></div>
             </div>
             <button class="expand-all-btn" onclick="toggleAll()">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="expand-icon"><polyline points="6 9 12 15 18 9"/></svg>
@@ -540,7 +563,7 @@
               datalabels: {
                 anchor: 'end', align: 'top', color: '#374151',
                 font: { size: 11, weight: '600' },
-                formatter: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v
+                formatter: v => fmtNum(v)
               },
               tooltip: {
                 callbacks: { label: ctx => '  ' + ctx.parsed.y.toLocaleString() + ' attempts' }
@@ -564,7 +587,8 @@
                 title: { display: true, text: yTitle + ' (Count)', color: '#6b7280', font: { size: 11 } },
                 ticks: {
                   color: '#6b7280', font: { size: 11 },
-                  callback: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v
+                  precision: 0,
+                  callback: v => { if (!Number.isInteger(v)) return ''; return fmtNum(v); }
                 },
                 grid: { color: 'rgba(0,0,0,0.05)' }, border: { display: false }
               }
@@ -637,15 +661,17 @@
       });
       sel.value = sorted[0];
 
-      // Also populate checkbox list for trend mode
-      const list = document.getElementById('dateCheckboxList');
-      list.innerHTML = '';
-      sorted.forEach(d => {
-        const item = document.createElement('label');
-        item.className = 'date-checkbox-item';
-        item.innerHTML = `<input type="checkbox" value="${d}" onchange="onMultiDateChange()"> ${d}`;
-        list.appendChild(item);
-      });
+      // Also populate multi-select dropdown for trend mode
+      const msel = document.getElementById('multiDateSelect');
+      if (msel) {
+        msel.innerHTML = '';
+        sorted.forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = d;
+          opt.textContent = d;
+          msel.appendChild(opt);
+        });
+      }
     }
 
     function onDateChange(date) {
@@ -664,48 +690,80 @@
       document.getElementById('single-date-wrap').style.display = mode === 'single' ? 'flex' : 'none';
       document.getElementById('multi-date-wrap').classList.toggle('visible', mode === 'trend');
       if (mode === 'single') {
+        // Reset state and default to most recent date
+        allExpanded = false;
+        for (const [id, chart] of Object.entries(chartInstances)) {
+          try { chart.destroy(); } catch(e) {}
+        }
+        chartInstances = {};
+        selectedDate = [...availDates].sort().reverse()[0];
+        document.getElementById('dateSelect').value = selectedDate;
         onDateChange(selectedDate);
       } else {
         renderTrendOrPrompt();
       }
     }
 
-    // ── Multi-date selection handlers ─────────────────────────────────────────
+    // ── Multi-date selection handlers (multi-select dropdown) ─────────────────
     function onMultiDateChange() {
-      const checked = [...document.querySelectorAll('#dateCheckboxList input[type=checkbox]:checked')];
+      const msel = document.getElementById('multiDateSelect');
+      const checked = [...msel.selectedOptions].map(o => o.value);
       const limitMsg = document.getElementById('limitMsg');
-
-      // Enforce max 7
       if (checked.length > 7) {
-        // Uncheck the last one that was checked by iterating all checkboxes
-        const allCbs = [...document.querySelectorAll('#dateCheckboxList input[type=checkbox]')];
-        // Find the ones that are checked but not in selectedDates (the newly checked one)
-        const prevSet = new Set(selectedDates);
-        const newlyChecked = checked.find(cb => !prevSet.has(cb.value));
-        if (newlyChecked) newlyChecked.checked = false;
+        // Deselect the extras — keep only first 7
+        [...msel.options].forEach((opt, i) => {
+          if (opt.selected) {
+            const idx = checked.indexOf(opt.value);
+            if (idx >= 7) opt.selected = false;
+          }
+        });
         limitMsg.classList.add('visible');
         setTimeout(() => limitMsg.classList.remove('visible'), 2500);
-        return;
+        selectedDates = checked.slice(0, 7).sort();
       } else {
         limitMsg.classList.remove('visible');
+        selectedDates = checked.sort();
       }
-
-      selectedDates = checked.map(cb => cb.value).sort();
       renderTrendOrPrompt();
     }
 
     function selectLast7() {
       const sorted = [...availDates].sort().reverse().slice(0, 7);
-      document.querySelectorAll('#dateCheckboxList input[type=checkbox]').forEach(cb => {
-        cb.checked = sorted.includes(cb.value);
-      });
-      onMultiDateChange();
+      const msel = document.getElementById('multiDateSelect');
+      if (msel) {
+        [...msel.options].forEach(opt => { opt.selected = sorted.includes(opt.value); });
+      }
+      selectedDates = sorted.sort();
+      renderTrendOrPrompt();
     }
 
     function clearDates() {
-      document.querySelectorAll('#dateCheckboxList input[type=checkbox]').forEach(cb => cb.checked = false);
+      const msel = document.getElementById('multiDateSelect');
+      if (msel) [...msel.options].forEach(opt => opt.selected = false);
       selectedDates = [];
       renderTrendOrPrompt();
+    }
+
+    // ── Refresh data ──────────────────────────────────────────────────────────
+    async function refreshData() {
+      const btn = document.querySelector('.refresh-btn');
+      if (btn) btn.classList.add('loading');
+      try {
+        allRows = await fetchSheetData();
+        availDates = [...new Set(allRows.map(r => r.date))].sort();
+        populateDateSelect(availDates);
+        selectedDate = [...availDates].sort().reverse()[0];
+        document.getElementById('dateSelect').value = selectedDate;
+        if (viewMode === 'single') {
+          onDateChange(selectedDate);
+        } else {
+          renderTrendOrPrompt();
+        }
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        if (btn) btn.classList.remove('loading');
+      }
     }
 
     // ── Trend or prompt ───────────────────────────────────────────────────────
@@ -717,7 +775,7 @@
           <div class="state-box">
             <div class="state-icon">📈</div>
             <div class="state-title">Select at least 2 dates to view the trend</div>
-            <div class="state-sub">Use the checkbox list to pick 2–7 dates, or click "Last 7 Days".</div>
+            <div class="state-sub">Use the date selector to pick 2–7 dates (hold Ctrl/Cmd), or click "Last 7 Days".</div>
           </div>`;
         document.getElementById('pageFooter').innerHTML =
           'Data source: Google Sheets &nbsp;·&nbsp; Timezone: America/New_York (EST/EDT)';
@@ -750,7 +808,6 @@
 
     // ── Render KPIs for trend mode (totals across selected dates) ─────────────
     function renderTrendKPIs(trendData, dates) {
-      // Collect unique markets and apis
       const markets = new Set(trendData.map(r => r.market));
       const apis    = new Set(trendData.map(r => r.api));
       let totalSuccess = 0, totalFailed = 0;
@@ -768,8 +825,8 @@
       document.getElementById('kpiStrip').innerHTML = `
         <div class="kpi-card"><div class="kpi-icon ki-m">🌐</div><div><div class="kpi-val">${markets.size}</div><div class="kpi-lbl">Markets</div></div></div>
         <div class="kpi-card"><div class="kpi-icon ki-a">⚡</div><div><div class="kpi-val">${apis.size}</div><div class="kpi-lbl">APIs</div></div></div>
-        <div class="kpi-card"><div class="kpi-icon ki-s">✅</div><div><div class="kpi-val" style="color:#16a34a">${totalSuccess.toLocaleString()}</div><div class="kpi-lbl">Success Attempts</div></div></div>
-        <div class="kpi-card"><div class="kpi-icon ki-f">❌</div><div><div class="kpi-val" style="color:#ea580c">${totalFailed.toLocaleString()}</div><div class="kpi-lbl">Failed Attempts</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon ki-s">✅</div><div><div class="kpi-val" style="color:#16a34a">${fmtNum(totalSuccess)}</div><div class="kpi-lbl">Success Attempts</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon ki-f">❌</div><div><div class="kpi-val" style="color:#ea580c">${fmtNum(totalFailed)}</div><div class="kpi-lbl">Failed Attempts</div></div></div>
         <div class="kpi-card"><div class="kpi-icon ki-r">%</div><div><div class="kpi-val" style="color:#4361ee">${rate}%</div><div class="kpi-lbl">Overall Success Rate</div></div></div>
       `;
     }
@@ -790,7 +847,7 @@
         marketMap.get(row.market).push(row);
       }
 
-      // Sort markets by total success rate descending
+      // Sort ascending by success rate (worst = most failures at top)
       const marketList = Array.from(marketMap.entries()).map(([market, rows]) => {
         let s = 0, f = 0;
         for (const r of rows) {
@@ -800,9 +857,9 @@
         }
         return { market, rows, totalSuccess: s, totalFailed: f };
       }).sort((a, b) => {
-        const ra = (a.totalSuccess + a.totalFailed) > 0 ? a.totalSuccess / (a.totalSuccess + a.totalFailed) : 0;
-        const rb = (b.totalSuccess + b.totalFailed) > 0 ? b.totalSuccess / (b.totalSuccess + b.totalFailed) : 0;
-        return rb - ra;
+        const ra = (a.totalSuccess + a.totalFailed) > 0 ? a.totalSuccess / (a.totalSuccess + a.totalFailed) : 1;
+        const rb = (b.totalSuccess + b.totalFailed) > 0 ? b.totalSuccess / (b.totalSuccess + b.totalFailed) : 1;
+        return ra - rb; // ascending: worst first
       });
 
       let summaryRows = '';
@@ -885,10 +942,10 @@
               <div class="api-card-header">
                 <div class="api-title"><span class="api-bolt">⚡</span><span class="api-name-text">${escHtml(apiName)}</span></div>
                 <div class="api-pills">
-                  <span class="pill pill-success">✓ ${aSuccess.toLocaleString()} success</span>
-                  <span class="pill pill-failed">✗ ${aFailed.toLocaleString()} failed</span>
+                  <span class="pill pill-success">✓ ${fmtNum(aSuccess)} success</span>
+                  <span class="pill pill-failed">✗ ${fmtNum(aFailed)} failed</span>
                   <span class="pill ${rateClass}">${aRate}% success rate</span>
-                  <span class="pill pill-total">Σ ${aTotal.toLocaleString()} total</span>
+                  <span class="pill pill-total">Σ ${fmtNum(aTotal)} total</span>
                 </div>
               </div>
               <div class="charts-grid">
@@ -916,8 +973,8 @@
               </div>
             </td>
             <td class="td-num td-apis">${uniqueApis.size}</td>
-            <td class="td-num td-success" style="color:#16a34a;font-weight:700">${mSuccess.toLocaleString()}</td>
-            <td class="td-num td-failed"  style="color:#ea580c;font-weight:700">${mFailed.toLocaleString()}</td>
+            <td class="td-num td-success" style="color:#16a34a;font-weight:700">${fmtNum(mSuccess)}</td>
+            <td class="td-num td-failed"  style="color:#ea580c;font-weight:700">${fmtNum(mFailed)}</td>
             <td class="td-rate">
               <div class="rate-cell">
                 <div class="rate-bar-wrap"><div class="rate-bar" style="width:${Math.min(100,mRateNum)}%;background:${rateColor}"></div></div>
@@ -977,7 +1034,8 @@
                 title: { display: true, text: 'COUNT', color: '#6b7280', font: { size: 11 } },
                 ticks: {
                   color: '#6b7280', font: { size: 11 },
-                  callback: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v
+                  precision: 0,
+                  callback: v => { if (!Number.isInteger(v)) return ''; return fmtNum(v); }
                 },
                 grid: { color: 'rgba(0,0,0,0.05)' }, border: { display: false }
               }
@@ -1035,7 +1093,7 @@
           <div class="table-section-header">
             <div>
               <div class="table-section-title">Market Trend Overview</div>
-              <div class="table-section-sub">Click any row to expand trend charts &nbsp;·&nbsp; Sorted by success rate &nbsp;·&nbsp; Range: <strong>${dateRange}</strong> (${dates.length} dates)</div>
+              <div class="table-section-sub">Click any row to expand trend charts &nbsp;·&nbsp; Sorted by success rate (worst first) &nbsp;·&nbsp; Range: <strong>${dateRange}</strong> (${dates.length} dates)</div>
             </div>
             <button class="expand-all-btn" onclick="toggleTrendAll()">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="expand-icon"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1077,7 +1135,7 @@
         // Collect unique dates
         availDates = [...new Set(allRows.map(r => r.date))].sort();
 
-        // Populate date selector and checkbox list
+        // Populate date selector and multi-select dropdown
         populateDateSelect(availDates);
 
         // Default to most recent date
