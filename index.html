@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Proxy Success &amp; Failure Metrics | v3</title>
+  <title>Proxy Success &amp; Failure Metrics | v4</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
   <style>
@@ -40,6 +40,26 @@
     }
     #dateSelect:focus { border-color: #4361ee; }
     #dateSelect option:disabled { color: #d1d5db; }
+
+    /* ── View Tabs ── */
+    .view-tabs { display:flex; gap:4px; background:#f3f4f6; border-radius:8px; padding:3px; }
+    .view-tab { padding:5px 14px; border-radius:6px; font-size:12px; font-weight:600; color:#6b7280; cursor:pointer; border:none; background:transparent; transition:all .15s; }
+    .view-tab.active { background:#fff; color:#4361ee; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+
+    /* ── Multi-date selector ── */
+    .multi-date-wrap { display:none; flex-direction:column; gap:6px; }
+    .multi-date-wrap.visible { display:flex; }
+    .date-checkbox-list { max-height:160px; overflow-y:auto; border:1.5px solid #e5e7eb; border-radius:8px; background:#fff; padding:6px 0; }
+    .date-checkbox-item { display:flex; align-items:center; gap:8px; padding:5px 12px; cursor:pointer; font-size:12px; font-weight:500; color:#374151; }
+    .date-checkbox-item:hover { background:#f9fafb; }
+    .date-checkbox-item input[type=checkbox] { accent-color:#4361ee; width:14px; height:14px; flex-shrink:0; cursor:pointer; }
+    .multi-date-actions { display:flex; gap:6px; }
+    .multi-btn { padding:5px 12px; border-radius:7px; font-size:11px; font-weight:600; cursor:pointer; border:1.5px solid #e5e7eb; background:#fff; color:#4361ee; transition:all .15s; }
+    .multi-btn:hover { background:#eff6ff; }
+    .multi-btn.clear-btn { color:#ea580c; }
+    .multi-btn.clear-btn:hover { background:#fff7ed; }
+    .multi-limit-msg { font-size:11px; color:#ea580c; display:none; }
+    .multi-limit-msg.visible { display:block; }
 
     /* ── Loading / Error states ── */
     .state-box {
@@ -127,6 +147,10 @@
     .chart-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; border:1.5px dashed #d1d5db; border-radius:8px; background:#f9fafb; }
     .empty-icon{font-size:26px;opacity:.3;} .empty-text{font-size:12px;color:#9ca3af;text-align:center;padding:0 14px;}
 
+    /* ── Trend label ── */
+    .trend-col-label { display:flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; margin-bottom:8px; padding-left:2px; color:#4361ee; }
+    .trend-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; background:#4361ee; }
+
     /* ── Footer ── */
     .page-footer { text-align:center; padding:16px; color:#9ca3af; font-size:11px; background:#fff; border-top:1px solid #e5e7eb; margin-top:4px; }
     ::-webkit-scrollbar{width:5px;height:5px;} ::-webkit-scrollbar-track{background:#f3f4f6;} ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px;}
@@ -147,11 +171,28 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         Report Date
       </div>
-      <div class="date-select-wrap">
+      <!-- View mode tabs -->
+      <div class="view-tabs">
+        <button class="view-tab active" data-mode="single" onclick="switchView('single')">Single Date</button>
+        <button class="view-tab" data-mode="trend" onclick="switchView('trend')">📈 Trend (7d)</button>
+      </div>
+      <!-- Single date selector -->
+      <div class="date-select-wrap" id="single-date-wrap" style="display:flex; align-items:center; gap:8px;">
         <label for="dateSelect">Select date:</label>
         <select id="dateSelect" onchange="onDateChange(this.value)">
           <option value="" disabled selected>Loading dates…</option>
         </select>
+      </div>
+      <!-- Multi date selector (trend mode) -->
+      <div class="multi-date-wrap" id="multi-date-wrap">
+        <div class="multi-date-actions">
+          <button class="multi-btn" onclick="selectLast7()">Last 7 Days</button>
+          <button class="multi-btn clear-btn" onclick="clearDates()">Clear</button>
+          <span class="multi-limit-msg" id="limitMsg">Max 7 dates</span>
+        </div>
+        <div class="date-checkbox-list" id="dateCheckboxList">
+          <!-- populated by JS -->
+        </div>
       </div>
     </div>
   </header>
@@ -180,9 +221,6 @@
     const SHEET_TAB = 'ProxyLogs';
     const MAX_PROXIES = 10;
 
-    // Google Sheets API Key (read-only, restricted to Sheets API in GCP Console)
-    // Create at: https://console.cloud.google.com/apis/credentials?project=proxyusage-505810
-    // Steps: Create Credentials → API Key → (optionally restrict to Google Sheets API)
     const SHEETS_API_KEY = 'AIzaSyBROtJ6wcXNaO9vnGRt5AbB3uoOFo00G8c';
 
     const PROXY_COLORS = [
@@ -191,30 +229,27 @@
       '#ff6b6b','#b5838d'
     ];
 
-    // ── State ─────────────────────────────────────────────────────────────────
-    let allRows      = [];   // raw rows from sheet: {date,market,api,proxy,success,failed}
-    let availDates   = [];   // sorted unique dates from sheet
-    let selectedDate = '';
-    let chartInstances = {}; // canvas id → Chart instance (for destroy on re-render)
-    let initialised  = {};
-    let allExpanded  = false;
+    const DATE_COLORS = ['#4361ee','#e76f51','#2a9d8f','#9b5de5','#f7b731','#06d6a0','#ff6b6b'];
 
-    // ── Fetch sheet data via Google Sheets API v4 (works from any browser/GitHub Pages) ──
-    // Requires:
-    //   1. Sheet shared as "Anyone with link → Viewer"  ← you already did this
-    //   2. A public API Key from GCP Console (read-only, no private key needed in HTML)
-    //      Create at: https://console.cloud.google.com/apis/credentials?project=proxyusage-505810
+    // ── State ─────────────────────────────────────────────────────────────────
+    let allRows        = [];
+    let availDates     = [];
+    let selectedDate   = '';
+    let chartInstances = {};
+    let initialised    = {};
+    let allExpanded    = false;
+    let viewMode       = 'single';   // 'single' | 'trend'
+    let selectedDates  = [];         // for trend mode
+
+    // ── Fetch sheet data via Google Sheets API v4 ─────────────────────────────
     async function fetchSheetData() {
       if (!SHEETS_API_KEY || SHEETS_API_KEY.length < 20) {
         throw new Error(
           'API key not set or invalid. Open proxyusagelogs.html and set a valid Google Sheets API Key.'
         );
       }
-
-      // Sheets API v4: read all rows from the ProxyLogs tab
-      // Returns JSON — no CORS issues, works from any static host
-      const range   = encodeURIComponent(`${SHEET_TAB}!A:F`);
-      const apiUrl  = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${SHEETS_API_KEY}`;
+      const range  = encodeURIComponent(`${SHEET_TAB}!A:F`);
+      const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${SHEETS_API_KEY}`;
 
       let resp;
       try {
@@ -234,9 +269,8 @@
 
       const json = await resp.json();
       const rows  = json.values || [];
-      if (rows.length < 2) return [];  // only header or empty
+      if (rows.length < 2) return [];
 
-      // First row is header: date, market, api, proxy, success, failed
       const headers = rows[0].map(h => h.toLowerCase().replace(/[^a-z]/g, ''));
       const idx = {
         date:    headers.indexOf('date'),
@@ -312,9 +346,8 @@
       `;
     }
 
-    // ── Render the summary table ───────────────────────────────────────────────
+    // ── Render the summary table (single date view) ───────────────────────────
     function renderTable(markets) {
-      // Destroy existing Chart instances to avoid canvas reuse errors
       for (const [id, chart] of Object.entries(chartInstances)) {
         try { chart.destroy(); } catch(e) {}
       }
@@ -322,7 +355,6 @@
       initialised    = {};
       allExpanded    = false;
 
-      // Sort by success rate desc
       const sorted = [...markets].sort((a, b) => {
         const rate = mkt => {
           let s = 0, f = 0;
@@ -358,7 +390,6 @@
         const mBadge    = market.market.substring(0, 2).toUpperCase();
         const marketId  = 'mkt_' + market.market.replace(/[^a-zA-Z0-9]/g, '_');
 
-        // ── API blocks (built into detail row) ─────────────────────────────
         let apiBlocks = '';
         for (const api of market.apis) {
           if (api.success.length === 0 && api.failed.length === 0) continue;
@@ -382,7 +413,6 @@
           const fId = 'cf' + cidCounter;
           cidCounter++;
 
-          // Store chart data in data attributes for lazy init
           const sData = JSON.stringify({ labels: sLabels, values: sValues, colors: sColors });
           const fData = JSON.stringify({ labels: fLabels, values: fValues, colors: fColors });
 
@@ -472,7 +502,6 @@
           </table>
         </div>`;
 
-      // Update footer
       document.getElementById('pageFooter').innerHTML =
         `Data source: Google Sheets (ProxyLogs) &nbsp;·&nbsp; Date: ${selectedDate} &nbsp;·&nbsp; Timezone: America/New_York (EST/EDT)`;
     }
@@ -483,7 +512,7 @@
       if (!row) return;
       const canvases = row.querySelectorAll('canvas[data-chart]');
       canvases.forEach(canvas => {
-        if (chartInstances[canvas.id]) return; // already drawn
+        if (chartInstances[canvas.id]) return;
         const d    = JSON.parse(canvas.getAttribute('data-chart').replace(/&apos;/g,"'"));
         const type = canvas.getAttribute('data-type');
         const yTitle = type === 'success' ? 'Success Attempts' : 'Failed Attempts';
@@ -572,34 +601,6 @@
       if (icon) icon.setAttribute('points', allExpanded ? '18 15 12 9 6 15' : '6 9 12 15 18 9');
     }
 
-    // ── Date selector: populate + handle change ───────────────────────────────
-    function populateDateSelect(dates) {
-      const sel = document.getElementById('dateSelect');
-      sel.innerHTML = '';
-      if (dates.length === 0) {
-        sel.innerHTML = '<option value="" disabled selected>No data available</option>';
-        return;
-      }
-      // Newest date first
-      const sorted = [...dates].sort().reverse();
-      sorted.forEach(d => {
-        const opt = document.createElement('option');
-        opt.value = d;
-        opt.textContent = d;
-        sel.appendChild(opt);
-      });
-      sel.value = sorted[0]; // default: most recent
-    }
-
-    function onDateChange(date) {
-      if (!date) return;
-      selectedDate = date;
-      const rows    = allRows.filter(r => r.date === date);
-      const markets = buildHierarchy(rows);
-      renderKPIs(markets);
-      renderTable(markets);
-    }
-
     // ── HTML escape helper ────────────────────────────────────────────────────
     function escHtml(s) {
       return String(s)
@@ -616,6 +617,440 @@
           <div class="state-title">Failed to load data</div>
           <div class="state-sub">${escHtml(msg)}</div>
         </div>`;
+    }
+
+    // ── Date selector: populate + handle change ───────────────────────────────
+    function populateDateSelect(dates) {
+      const sel = document.getElementById('dateSelect');
+      sel.innerHTML = '';
+      if (dates.length === 0) {
+        sel.innerHTML = '<option value="" disabled selected>No data available</option>';
+        return;
+      }
+      const sorted = [...dates].sort().reverse();
+      sorted.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        sel.appendChild(opt);
+      });
+      sel.value = sorted[0];
+
+      // Also populate checkbox list for trend mode
+      const list = document.getElementById('dateCheckboxList');
+      list.innerHTML = '';
+      sorted.forEach(d => {
+        const item = document.createElement('label');
+        item.className = 'date-checkbox-item';
+        item.innerHTML = `<input type="checkbox" value="${d}" onchange="onMultiDateChange()"> ${d}`;
+        list.appendChild(item);
+      });
+    }
+
+    function onDateChange(date) {
+      if (!date) return;
+      selectedDate = date;
+      const rows    = allRows.filter(r => r.date === date);
+      const markets = buildHierarchy(rows);
+      renderKPIs(markets);
+      renderTable(markets);
+    }
+
+    // ── View switching ────────────────────────────────────────────────────────
+    function switchView(mode) {
+      viewMode = mode;
+      document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+      document.getElementById('single-date-wrap').style.display = mode === 'single' ? 'flex' : 'none';
+      document.getElementById('multi-date-wrap').classList.toggle('visible', mode === 'trend');
+      if (mode === 'single') {
+        onDateChange(selectedDate);
+      } else {
+        renderTrendOrPrompt();
+      }
+    }
+
+    // ── Multi-date selection handlers ─────────────────────────────────────────
+    function onMultiDateChange() {
+      const checked = [...document.querySelectorAll('#dateCheckboxList input[type=checkbox]:checked')];
+      const limitMsg = document.getElementById('limitMsg');
+
+      // Enforce max 7
+      if (checked.length > 7) {
+        // Uncheck the last one that was checked by iterating all checkboxes
+        const allCbs = [...document.querySelectorAll('#dateCheckboxList input[type=checkbox]')];
+        // Find the ones that are checked but not in selectedDates (the newly checked one)
+        const prevSet = new Set(selectedDates);
+        const newlyChecked = checked.find(cb => !prevSet.has(cb.value));
+        if (newlyChecked) newlyChecked.checked = false;
+        limitMsg.classList.add('visible');
+        setTimeout(() => limitMsg.classList.remove('visible'), 2500);
+        return;
+      } else {
+        limitMsg.classList.remove('visible');
+      }
+
+      selectedDates = checked.map(cb => cb.value).sort();
+      renderTrendOrPrompt();
+    }
+
+    function selectLast7() {
+      const sorted = [...availDates].sort().reverse().slice(0, 7);
+      document.querySelectorAll('#dateCheckboxList input[type=checkbox]').forEach(cb => {
+        cb.checked = sorted.includes(cb.value);
+      });
+      onMultiDateChange();
+    }
+
+    function clearDates() {
+      document.querySelectorAll('#dateCheckboxList input[type=checkbox]').forEach(cb => cb.checked = false);
+      selectedDates = [];
+      renderTrendOrPrompt();
+    }
+
+    // ── Trend or prompt ───────────────────────────────────────────────────────
+    function renderTrendOrPrompt() {
+      if (selectedDates.length < 2) {
+        // Clear KPI strip
+        document.getElementById('kpiStrip').innerHTML = '';
+        document.getElementById('pageBody').innerHTML = `
+          <div class="state-box">
+            <div class="state-icon">📈</div>
+            <div class="state-title">Select at least 2 dates to view the trend</div>
+            <div class="state-sub">Use the checkbox list to pick 2–7 dates, or click "Last 7 Days".</div>
+          </div>`;
+        document.getElementById('pageFooter').innerHTML =
+          'Data source: Google Sheets &nbsp;·&nbsp; Timezone: America/New_York (EST/EDT)';
+      } else {
+        renderTrendView(selectedDates);
+      }
+    }
+
+    // ── Build flat trend data ─────────────────────────────────────────────────
+    // Returns: [{ market, api, proxy, byDate: { [date]: { success, failed } } }]
+    function buildTrendData(dates) {
+      const dateSet = new Set(dates);
+      const filtered = allRows.filter(r => dateSet.has(r.date));
+
+      // group by market+api+proxy
+      const keyMap = new Map();
+      for (const row of filtered) {
+        const key = `${row.market}\x00${row.api}\x00${row.proxy}`;
+        if (!keyMap.has(key)) {
+          keyMap.set(key, { market: row.market, api: row.api, proxy: row.proxy, byDate: {} });
+        }
+        const entry = keyMap.get(key);
+        if (!entry.byDate[row.date]) entry.byDate[row.date] = { success: 0, failed: 0 };
+        entry.byDate[row.date].success += row.success;
+        entry.byDate[row.date].failed  += row.failed;
+      }
+
+      return Array.from(keyMap.values());
+    }
+
+    // ── Render KPIs for trend mode (totals across selected dates) ─────────────
+    function renderTrendKPIs(trendData, dates) {
+      // Collect unique markets and apis
+      const markets = new Set(trendData.map(r => r.market));
+      const apis    = new Set(trendData.map(r => r.api));
+      let totalSuccess = 0, totalFailed = 0;
+      for (const r of trendData) {
+        for (const d of dates) {
+          if (r.byDate[d]) {
+            totalSuccess += r.byDate[d].success;
+            totalFailed  += r.byDate[d].failed;
+          }
+        }
+      }
+      const totalAttempts = totalSuccess + totalFailed;
+      const rate = totalAttempts > 0 ? ((totalSuccess / totalAttempts) * 100).toFixed(1) : '0.0';
+
+      document.getElementById('kpiStrip').innerHTML = `
+        <div class="kpi-card"><div class="kpi-icon ki-m">🌐</div><div><div class="kpi-val">${markets.size}</div><div class="kpi-lbl">Markets</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon ki-a">⚡</div><div><div class="kpi-val">${apis.size}</div><div class="kpi-lbl">APIs</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon ki-s">✅</div><div><div class="kpi-val" style="color:#16a34a">${totalSuccess.toLocaleString()}</div><div class="kpi-lbl">Success Attempts</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon ki-f">❌</div><div><div class="kpi-val" style="color:#ea580c">${totalFailed.toLocaleString()}</div><div class="kpi-lbl">Failed Attempts</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon ki-r">%</div><div><div class="kpi-val" style="color:#4361ee">${rate}%</div><div class="kpi-lbl">Overall Success Rate</div></div></div>
+      `;
+    }
+
+    // ── Render trend market table ──────────────────────────────────────────────
+    function renderTrendMarketTable(trendData, dates) {
+      // Destroy existing charts
+      for (const [id, chart] of Object.entries(chartInstances)) {
+        try { chart.destroy(); } catch(e) {}
+      }
+      chartInstances = {};
+      allExpanded = false;
+
+      // Group by market
+      const marketMap = new Map();
+      for (const row of trendData) {
+        if (!marketMap.has(row.market)) marketMap.set(row.market, []);
+        marketMap.get(row.market).push(row);
+      }
+
+      // Sort markets by total success rate descending
+      const marketList = Array.from(marketMap.entries()).map(([market, rows]) => {
+        let s = 0, f = 0;
+        for (const r of rows) {
+          for (const d of dates) {
+            if (r.byDate[d]) { s += r.byDate[d].success; f += r.byDate[d].failed; }
+          }
+        }
+        return { market, rows, totalSuccess: s, totalFailed: f };
+      }).sort((a, b) => {
+        const ra = (a.totalSuccess + a.totalFailed) > 0 ? a.totalSuccess / (a.totalSuccess + a.totalFailed) : 0;
+        const rb = (b.totalSuccess + b.totalFailed) > 0 ? b.totalSuccess / (b.totalSuccess + b.totalFailed) : 0;
+        return rb - ra;
+      });
+
+      let summaryRows = '';
+      let cidCounter  = 0;
+
+      for (let mi = 0; mi < marketList.length; mi++) {
+        const { market, rows, totalSuccess: mSuccess, totalFailed: mFailed } = marketList[mi];
+        const mTotal   = mSuccess + mFailed;
+        const mRate    = mTotal > 0 ? ((mSuccess / mTotal) * 100).toFixed(1) : '0.0';
+        const mRateNum = parseFloat(mRate);
+        const badgeColor = PROXY_COLORS[mi % PROXY_COLORS.length];
+        const rowClass   = mRateNum >= 80 ? 'row-good' : mRateNum >= 50 ? 'row-warn' : 'row-bad';
+        const rateColor  = mRateNum >= 80 ? '#16a34a'  : mRateNum >= 50 ? '#ca8a04'  : '#ea580c';
+        const mBadge     = market.substring(0, 2).toUpperCase();
+        const marketId   = 'tmkt_' + market.replace(/[^a-zA-Z0-9]/g, '_');
+
+        // Group rows by api
+        const apiMap = new Map();
+        for (const row of rows) {
+          if (!apiMap.has(row.api)) apiMap.set(row.api, []);
+          apiMap.get(row.api).push(row);
+        }
+        const uniqueApis = new Set(rows.map(r => r.api));
+
+        let apiBlocks = '';
+        for (const [apiName, apiRows] of apiMap.entries()) {
+          let aSuccess = 0, aFailed = 0;
+          for (const r of apiRows) {
+            for (const d of dates) {
+              if (r.byDate[d]) { aSuccess += r.byDate[d].success; aFailed += r.byDate[d].failed; }
+            }
+          }
+          const aTotal   = aSuccess + aFailed;
+          const aRate    = aTotal > 0 ? ((aSuccess / aTotal) * 100).toFixed(1) : '0.0';
+          const rateClass= parseFloat(aRate) >= 80 ? 'pill-rate-good' : parseFloat(aRate) >= 50 ? 'pill-rate-warn' : 'pill-rate-bad';
+
+          // All unique proxy names for this market+api across all selected dates
+          const allProxyNames = [...new Set(apiRows.map(r => r.proxy))];
+
+          // Build lookup: proxy → { [date]: {success, failed} }
+          const proxyDateMap = {};
+          for (const r of apiRows) {
+            if (!proxyDateMap[r.proxy]) proxyDateMap[r.proxy] = {};
+            for (const d of dates) {
+              proxyDateMap[r.proxy][d] = r.byDate[d] || { success: 0, failed: 0 };
+            }
+          }
+
+          const chartH = Math.min(380, Math.max(220, 180 + allProxyNames.length * 20));
+          const sId = 'tcs' + cidCounter;
+          const fId = 'tcf' + cidCounter;
+          cidCounter++;
+
+          // Encode chart data for lazy init
+          const sDatasets = dates.map((date, di) => ({
+            label: date,
+            data: allProxyNames.map(proxy => (proxyDateMap[proxy] && proxyDateMap[proxy][date]) ? proxyDateMap[proxy][date].success : 0),
+            backgroundColor: DATE_COLORS[di % DATE_COLORS.length],
+            borderRadius: 4,
+            barPercentage: 0.7,
+            categoryPercentage: 0.8
+          }));
+          const fDatasets = dates.map((date, di) => ({
+            label: date,
+            data: allProxyNames.map(proxy => (proxyDateMap[proxy] && proxyDateMap[proxy][date]) ? proxyDateMap[proxy][date].failed : 0),
+            backgroundColor: DATE_COLORS[di % DATE_COLORS.length],
+            borderRadius: 4,
+            barPercentage: 0.7,
+            categoryPercentage: 0.8
+          }));
+
+          const sTrendData = JSON.stringify({ labels: allProxyNames, datasets: sDatasets });
+          const fTrendData = JSON.stringify({ labels: allProxyNames, datasets: fDatasets });
+
+          const successTrendChart = `<div class="chart-wrap" style="height:${chartH}px"><canvas id="${sId}" data-trend='${sTrendData.replace(/'/g,"&apos;")}' data-trend-type="success"></canvas></div>`;
+          const failedTrendChart  = `<div class="chart-wrap" style="height:${chartH}px"><canvas id="${fId}" data-trend='${fTrendData.replace(/'/g,"&apos;")}' data-trend-type="failed"></canvas></div>`;
+
+          apiBlocks += `
+            <div class="api-card">
+              <div class="api-card-header">
+                <div class="api-title"><span class="api-bolt">⚡</span><span class="api-name-text">${escHtml(apiName)}</span></div>
+                <div class="api-pills">
+                  <span class="pill pill-success">✓ ${aSuccess.toLocaleString()} success</span>
+                  <span class="pill pill-failed">✗ ${aFailed.toLocaleString()} failed</span>
+                  <span class="pill ${rateClass}">${aRate}% success rate</span>
+                  <span class="pill pill-total">Σ ${aTotal.toLocaleString()} total</span>
+                </div>
+              </div>
+              <div class="charts-grid">
+                <div class="chart-col">
+                  <div class="chart-col-label trend-col-label"><span class="col-dot trend-dot"></span>SUCCESS TREND</div>
+                  ${successTrendChart}
+                </div>
+                <div class="chart-col">
+                  <div class="chart-col-label failed-col-label"><span class="col-dot failed-dot"></span>FAILED TREND</div>
+                  ${failedTrendChart}
+                </div>
+              </div>
+            </div>`;
+        }
+
+        summaryRows += `
+          <tr class="summary-row ${rowClass}" onclick="toggleTrendMarket('${marketId}')">
+            <td class="td-market">
+              <div class="row-left">
+                <div class="row-chevron" id="chev_${marketId}">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+                <div class="row-badge" style="background:${badgeColor}">${mBadge}</div>
+                <span class="row-market-name">${escHtml(market.toUpperCase())}</span>
+              </div>
+            </td>
+            <td class="td-num td-apis">${uniqueApis.size}</td>
+            <td class="td-num td-success" style="color:#16a34a;font-weight:700">${mSuccess.toLocaleString()}</td>
+            <td class="td-num td-failed"  style="color:#ea580c;font-weight:700">${mFailed.toLocaleString()}</td>
+            <td class="td-rate">
+              <div class="rate-cell">
+                <div class="rate-bar-wrap"><div class="rate-bar" style="width:${Math.min(100,mRateNum)}%;background:${rateColor}"></div></div>
+                <span class="rate-text" style="color:${rateColor}">${mRate}%</span>
+              </div>
+            </td>
+          </tr>
+          <tr class="detail-row" id="${marketId}" style="display:none">
+            <td colspan="5" class="detail-td">
+              <div class="detail-inner">${apiBlocks}</div>
+            </td>
+          </tr>`;
+      }
+
+      return summaryRows;
+    }
+
+    // ── Lazy init for trend charts ─────────────────────────────────────────────
+    function initTrendChartsInRow(rowId) {
+      const row = document.getElementById(rowId);
+      if (!row) return;
+      const canvases = row.querySelectorAll('canvas[data-trend]');
+      canvases.forEach(canvas => {
+        if (chartInstances[canvas.id]) return;
+        const d    = JSON.parse(canvas.getAttribute('data-trend').replace(/&apos;/g,"'"));
+        const type = canvas.getAttribute('data-trend-type');
+
+        const chart = new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: d.labels,
+            datasets: d.datasets
+          },
+          options: {
+            indexAxis: 'x',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+              datalabels: { display: false },
+              tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}` } }
+            },
+            scales: {
+              x: {
+                title: { display: true, text: 'Proxy Type', color: '#6b7280', font: { size: 11 } },
+                ticks: { color: '#6b7280', font: { size: 11 }, maxRotation: 20 },
+                grid: { display: false }, border: { display: false }
+              },
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: 'COUNT', color: '#6b7280', font: { size: 11 } },
+                ticks: {
+                  color: '#6b7280', font: { size: 11 },
+                  callback: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v
+                },
+                grid: { color: 'rgba(0,0,0,0.05)' }, border: { display: false }
+              }
+            },
+            layout: { padding: { top: 16 } }
+          },
+          plugins: [ChartDataLabels]
+        });
+        chartInstances[canvas.id] = chart;
+      });
+    }
+
+    // ── Toggle trend market row ────────────────────────────────────────────────
+    function toggleTrendMarket(id) {
+      const row     = document.getElementById(id);
+      const chevron = document.getElementById('chev_' + id);
+      if (!row) return;
+      const isOpen = row.style.display !== 'none';
+      row.style.display = isOpen ? 'none' : 'table-row';
+      if (chevron) chevron.classList.toggle('open', !isOpen);
+      if (!isOpen) initTrendChartsInRow(id);
+    }
+
+    // ── Trend expand all ───────────────────────────────────────────────────────
+    function toggleTrendAll() {
+      allExpanded = !allExpanded;
+      document.querySelectorAll('.detail-row').forEach(r => {
+        r.style.display = allExpanded ? 'table-row' : 'none';
+        if (allExpanded) initTrendChartsInRow(r.id);
+      });
+      document.querySelectorAll('.row-chevron').forEach(c => c.classList.toggle('open', allExpanded));
+      const lbl  = document.getElementById('expand-label');
+      const icon = document.getElementById('expand-icon');
+      if (lbl)  lbl.textContent = allExpanded ? 'Collapse All' : 'Expand All';
+      if (icon) icon.setAttribute('points', allExpanded ? '18 15 12 9 6 15' : '6 9 12 15 18 9');
+    }
+
+    // ── Main trend view renderer ───────────────────────────────────────────────
+    function renderTrendView(dates) {
+      // Destroy any old charts
+      for (const [id, chart] of Object.entries(chartInstances)) {
+        try { chart.destroy(); } catch(e) {}
+      }
+      chartInstances = {};
+      allExpanded = false;
+
+      const trendData = buildTrendData(dates);
+      renderTrendKPIs(trendData, dates);
+
+      const summaryRows = renderTrendMarketTable(trendData, dates);
+      const dateRange   = dates[0] + ' → ' + dates[dates.length - 1];
+
+      document.getElementById('pageBody').innerHTML = `
+        <div class="table-section">
+          <div class="table-section-header">
+            <div>
+              <div class="table-section-title">Market Trend Overview</div>
+              <div class="table-section-sub">Click any row to expand trend charts &nbsp;·&nbsp; Sorted by success rate &nbsp;·&nbsp; Range: <strong>${dateRange}</strong> (${dates.length} dates)</div>
+            </div>
+            <button class="expand-all-btn" onclick="toggleTrendAll()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="expand-icon"><polyline points="6 9 12 15 18 9"/></svg>
+              <span id="expand-label">Expand All</span>
+            </button>
+          </div>
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th class="th-market">Market Name</th>
+                <th class="th-num">APIs</th>
+                <th class="th-num">Success</th>
+                <th class="th-num">Failed</th>
+                <th class="th-rate">Success Rate</th>
+              </tr>
+            </thead>
+            <tbody>${summaryRows}</tbody>
+          </table>
+        </div>`;
+
+      document.getElementById('pageFooter').innerHTML =
+        `Data source: Google Sheets (ProxyLogs) &nbsp;·&nbsp; Trend: ${dateRange} &nbsp;·&nbsp; Timezone: America/New_York (EST/EDT)`;
     }
 
     // ── Bootstrap ─────────────────────────────────────────────────────────────
@@ -635,14 +1070,14 @@
         // Collect unique dates
         availDates = [...new Set(allRows.map(r => r.date))].sort();
 
-        // Populate date selector (only available dates, none disabled)
+        // Populate date selector and checkbox list
         populateDateSelect(availDates);
 
         // Default to most recent date
         selectedDate = [...availDates].sort().reverse()[0];
         document.getElementById('dateSelect').value = selectedDate;
 
-        // Render
+        // Render single date view by default
         onDateChange(selectedDate);
 
       } catch (err) {
