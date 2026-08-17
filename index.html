@@ -178,6 +178,7 @@
     // ── Config ────────────────────────────────────────────────────────────────
     const SHEET_ID  = '12rUhAXNMVvoVp2623qYkkhfqWChPPrHQRJfUy6WujmQ';
     const SHEET_TAB = 'ProxyLogs';
+    const SHEET_GID = '1455316507';   // numeric tab ID created by proxyusagelogs.js
     const MAX_PROXIES = 10;
 
     const PROXY_COLORS = [
@@ -194,19 +195,40 @@
     let initialised  = {};
     let allExpanded  = false;
 
-    // ── Fetch sheet data via CSV export (CORS-safe, works on GitHub Pages) ──────
+    // ── Fetch sheet data via Published-to-web CSV (the only CORS-safe method) ──
+    // The spreadsheet MUST be published to the web:
+    //   Google Sheets → File → Share → Publish to web → Sheet "ProxyLogs" → CSV → Publish
+    // The /pub?output=csv URL works from any origin including GitHub Pages.
     async function fetchSheetData() {
-      // CSV export URL — requires the sheet to be publicly readable.
-      // Finds the GID (tab ID) first by fetching the sheet metadata JSON,
-      // then exports that specific tab as CSV.
-      // Fallback: export the first tab (gid=0) and rely on tab name matching.
-      const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&sheet=${encodeURIComponent(SHEET_TAB)}`;
+      // We need the numeric gid of the ProxyLogs tab.
+      // It was created by proxyusagelogs.js → sheetId is stored in SHEET_GID below.
+      const pubUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pub?gid=${SHEET_GID}&single=true&output=csv`;
 
-      const resp = await fetch(csvUrl);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching sheet. Make sure the spreadsheet is shared publicly (Anyone with the link → Viewer).`);
+      let resp;
+      try {
+        resp = await fetch(pubUrl, { cache: 'no-store' });
+      } catch (e) {
+        throw new Error(
+          'Network error: ' + e.message + '. ' +
+          'Make sure the sheet is published: Google Sheets → File → Share → Publish to web → Choose "ProxyLogs" tab → CSV → Publish.'
+        );
+      }
+
+      if (!resp.ok) {
+        throw new Error(
+          `HTTP ${resp.status}. ` +
+          'The sheet may not be published to the web. ' +
+          'Open the Google Sheet → File → Share → Publish to web → Select the "ProxyLogs" tab → CSV format → click Publish.'
+        );
+      }
 
       const text = await resp.text();
-      if (!text || text.trim() === '') throw new Error('Sheet returned empty data. Make sure the ProxyLogs tab has data.');
+      if (!text || text.trim() === '' || text.includes('<!DOCTYPE')) {
+        throw new Error(
+          'Sheet returned no CSV data (got HTML instead). ' +
+          'Publish the sheet: File → Share → Publish to web → "ProxyLogs" tab → CSV → Publish.'
+        );
+      }
 
       return parseCSV(text);
     }
