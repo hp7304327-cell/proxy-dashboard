@@ -77,7 +77,11 @@
       border-radius: 12px !important;
       box-shadow: 0 10px 30px rgba(0,0,0,.12) !important;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+      margin-top: 6px !important;
     }
+    /* Always open below — never above */
+    .flatpickr-calendar.arrowTop { top: auto !important; }
+    .flatpickr-calendar.arrowBottom { bottom: auto !important; }
     .flatpickr-day.selected,
     .flatpickr-day.startRange,
     .flatpickr-day.endRange {
@@ -229,13 +233,13 @@
       </div>
       <!-- Multi date range picker (trend mode) — Flatpickr calendar -->
       <div class="multi-date-wrap" id="multi-date-wrap">
+      <!-- Hidden input that Flatpickr attaches to — placed next to trigger for correct positioning -->
+        <input type="text" id="dateRangeInput" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;">
         <button class="date-range-trigger" id="dateRangeTrigger" onclick="toggleDatePicker()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           <span id="dateRangeLabel">Select date range…</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <!-- Hidden input that Flatpickr attaches to -->
-        <input type="text" id="dateRangeInput" style="display:none;">
         <div class="multi-date-actions">
           <button class="multi-btn" onclick="selectLast7()">Last 7 Days</button>
           <button class="multi-btn clear-btn" onclick="clearDates()">Clear</button>
@@ -720,13 +724,11 @@
         dateFormat: 'Y-m-d',
         minDate: sorted[0],
         maxDate: sorted[sorted.length - 1],
-        // Only allow days that exist in the sheet
         enable: sorted,
-        // When user picks a range, collect all matching sheet dates in that range
+        positionElement: document.getElementById('dateRangeTrigger'),
         onChange: function(selectedDts, dateStr) {
           if (selectedDts.length === 2) {
             const [from, to] = selectedDts;
-            // Collect sheet dates within the selected range (max 7)
             const inRange = sorted.filter(d => {
               const dt = new Date(d);
               return dt >= from && dt <= to;
@@ -734,7 +736,6 @@
 
             selectedDates = inRange;
 
-            // Show limit warning if capped
             const total = sorted.filter(d => {
               const dt = new Date(d);
               return dt >= from && dt <= to;
@@ -752,14 +753,24 @@
             updateDateRangeLabel();
             renderTrendOrPrompt();
           }
-        },
-        appendTo: document.getElementById('multi-date-wrap'),
-        static: false
+        }
       });
     }
 
     function toggleDatePicker() {
-      if (fpInstance) fpInstance.toggle();
+      if (fpInstance) {
+        // Position the calendar below the trigger button
+        const trigger = document.getElementById('dateRangeTrigger');
+        const input   = document.getElementById('dateRangeInput');
+        if (trigger && input) {
+          const rect = trigger.getBoundingClientRect();
+          // Move the hidden input to sit at the trigger's position
+          input.style.position = 'fixed';
+          input.style.top  = (rect.bottom + window.scrollY) + 'px';
+          input.style.left = rect.left + 'px';
+        }
+        fpInstance.toggle();
+      }
     }
 
     function updateDateRangeLabel() {
