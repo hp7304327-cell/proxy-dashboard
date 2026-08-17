@@ -178,8 +178,12 @@
     // ── Config ────────────────────────────────────────────────────────────────
     const SHEET_ID  = '12rUhAXNMVvoVp2623qYkkhfqWChPPrHQRJfUy6WujmQ';
     const SHEET_TAB = 'ProxyLogs';
-    const SHEET_GID = '1455316507';   // numeric tab ID created by proxyusagelogs.js
     const MAX_PROXIES = 10;
+
+    // Google Sheets API Key (read-only, restricted to Sheets API in GCP Console)
+    // Create at: https://console.cloud.google.com/apis/credentials?project=proxyusage-505810
+    // Steps: Create Credentials → API Key → (optionally restrict to Google Sheets API)
+    const SHEETS_API_KEY = 'AIzaSyBROtJ6wcXNaO9vnGRt5AbB3uoOFo00G8c';
 
     const PROXY_COLORS = [
       '#4361ee','#f4a261','#2a9d8f','#9b5de5',
@@ -195,70 +199,45 @@
     let initialised  = {};
     let allExpanded  = false;
 
-    // ── Fetch sheet data via Published-to-web CSV (the only CORS-safe method) ──
-    // The spreadsheet MUST be published to the web:
-    //   Google Sheets → File → Share → Publish to web → Sheet "ProxyLogs" → CSV → Publish
-    // The /pub?output=csv URL works from any origin including GitHub Pages.
+    // ── Fetch sheet data via Google Sheets API v4 (works from any browser/GitHub Pages) ──
+    // Requires:
+    //   1. Sheet shared as "Anyone with link → Viewer"  ← you already did this
+    //   2. A public API Key from GCP Console (read-only, no private key needed in HTML)
+    //      Create at: https://console.cloud.google.com/apis/credentials?project=proxyusage-505810
     async function fetchSheetData() {
-      // We need the numeric gid of the ProxyLogs tab.
-      // It was created by proxyusagelogs.js → sheetId is stored in SHEET_GID below.
-      const pubUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pub?gid=${SHEET_GID}&single=true&output=csv`;
+      if (!SHEETS_API_KEY || SHEETS_API_KEY.length < 20) {
+        throw new Error(
+          'API key not set or invalid. Open proxyusagelogs.html and set a valid Google Sheets API Key.'
+        );
+      }
+
+      // Sheets API v4: read all rows from the ProxyLogs tab
+      // Returns JSON — no CORS issues, works from any static host
+      const range   = encodeURIComponent(`${SHEET_TAB}!A:F`);
+      const apiUrl  = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${SHEETS_API_KEY}`;
 
       let resp;
       try {
-        resp = await fetch(pubUrl, { cache: 'no-store' });
+        resp = await fetch(apiUrl, { cache: 'no-store' });
       } catch (e) {
-        throw new Error(
-          'Network error: ' + e.message + '. ' +
-          'Make sure the sheet is published: Google Sheets → File → Share → Publish to web → Choose "ProxyLogs" tab → CSV → Publish.'
-        );
+        throw new Error('Network error: ' + e.message);
       }
 
       if (!resp.ok) {
-        throw new Error(
-          `HTTP ${resp.status}. ` +
-          'The sheet may not be published to the web. ' +
-          'Open the Google Sheet → File → Share → Publish to web → Select the "ProxyLogs" tab → CSV format → click Publish.'
-        );
+        let errMsg = `HTTP ${resp.status}`;
+        try {
+          const errJson = await resp.json();
+          errMsg += ': ' + (errJson.error && errJson.error.message ? errJson.error.message : JSON.stringify(errJson));
+        } catch (_) {}
+        throw new Error(errMsg);
       }
 
-      const text = await resp.text();
-      if (!text || text.trim() === '' || text.includes('<!DOCTYPE')) {
-        throw new Error(
-          'Sheet returned no CSV data (got HTML instead). ' +
-          'Publish the sheet: File → Share → Publish to web → "ProxyLogs" tab → CSV → Publish.'
-        );
-      }
+      const json = await resp.json();
+      const rows  = json.values || [];
+      if (rows.length < 2) return [];  // only header or empty
 
-      return parseCSV(text);
-    }
-
-    // ── Parse CSV text into row objects ───────────────────────────────────────
-    function parseCSV(text) {
-      const lines = text.trim().split('\n');
-      if (lines.length < 2) return [];   // only header or empty
-
-      // Parse a single CSV line respecting quoted fields
-      function parseLine(line) {
-        const cols = [];
-        let cur = '', inQ = false;
-        for (let i = 0; i < line.length; i++) {
-          const ch = line[i];
-          if (ch === '"') {
-            if (inQ && line[i+1] === '"') { cur += '"'; i++; }
-            else inQ = !inQ;
-          } else if (ch === ',' && !inQ) {
-            cols.push(cur.trim()); cur = '';
-          } else {
-            cur += ch;
-          }
-        }
-        cols.push(cur.trim());
-        return cols;
-      }
-
-      const headers = parseLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z]/g, ''));
-      // Expected: date, market, api, proxy, success, failed
+      // First row is header: date, market, api, proxy, success, failed
+      const headers = rows[0].map(h => h.toLowerCase().replace(/[^a-z]/g, ''));
       const idx = {
         date:    headers.indexOf('date'),
         market:  headers.indexOf('market'),
@@ -268,26 +247,18 @@
         failed:  headers.indexOf('failed')
       };
 
-      // Validate all columns exist
       for (const [key, i] of Object.entries(idx)) {
-        if (i === -1) throw new Error(`Column "${key}" not found in sheet headers: ${headers.join(', ')}`);
+        if (i === -1) throw new Error(`Column "${key}" not found. Sheet headers: ${headers.join(', ')}`);
       }
 
-      const rows = [];
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
-        const cols = parseLine(lines[i]);
-        const date    = (cols[idx.date]    || '').trim();
-        const market  = (cols[idx.market]  || '').trim();
-        const api     = (cols[idx.api]     || '').trim();
-        const proxy   = (cols[idx.proxy]   || '').trim();
-        const success = parseInt(cols[idx.success] || '0', 10) || 0;
-        const failed  = parseInt(cols[idx.failed]  || '0', 10) || 0;
-        if (date && market && api && proxy) {
-          rows.push({ date, market, api, proxy, success, failed });
-        }
-      }
-      return rows;
+      return rows.slice(1).map(r => ({
+        date:    (r[idx.date]    || '').trim(),
+        market:  (r[idx.market]  || '').trim(),
+        api:     (r[idx.api]     || '').trim(),
+        proxy:   (r[idx.proxy]   || '').trim(),
+        success: parseInt(r[idx.success] || '0', 10) || 0,
+        failed:  parseInt(r[idx.failed]  || '0', 10) || 0
+      })).filter(r => r.date && r.market && r.api && r.proxy);
     }
 
     // ── Parse rows into market→api→proxy hierarchy ────────────────────────────
