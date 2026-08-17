@@ -407,8 +407,8 @@
           const fValues = api.failed.map(d => d.count);
           const fColors = fLabels.map((_, i) => PROXY_COLORS[i % PROXY_COLORS.length]);
 
-          const sH = Math.min(400, Math.max(240, 200 + sLabels.length * 28));
-          const fH = Math.min(400, Math.max(240, 200 + fLabels.length * 28));
+          const sH = Math.min(460, Math.max(300, 240 + sLabels.length * 28));
+          const fH = Math.min(460, Math.max(300, 240 + fLabels.length * 28));
           const sId = 'cs' + cidCounter;
           const fId = 'cf' + cidCounter;
           cidCounter++;
@@ -550,13 +550,14 @@
               x: {
                 title: { display: true, text: 'Proxy Type', color: '#6b7280', font: { size: 11 } },
                 ticks: {
-                  color: '#6b7280', font: { size: 11 }, maxRotation: 20, minRotation: 0,
-                  callback(val) {
-                    const l = this.getLabelForValue(val);
-                    return l.length > 14 ? l.substring(0,13) + '…' : l;
-                  }
+                  color: '#6b7280',
+                  font: { size: 11 },
+                  maxRotation: 45,
+                  minRotation: 45,
+                  autoSkip: false
                 },
-                grid: { display: false }, border: { display: false }
+                grid: { display: false },
+                border: { display: false }
               },
               y: {
                 beginAtZero: true,
@@ -568,7 +569,7 @@
                 grid: { color: 'rgba(0,0,0,0.05)' }, border: { display: false }
               }
             },
-            layout: { padding: { top: 28 } }
+            layout: { padding: { top: 28, bottom: 10 } }
           },
           plugins: [ChartDataLabels]
         });
@@ -850,7 +851,7 @@
             }
           }
 
-          const chartH = Math.min(380, Math.max(220, 180 + allProxyNames.length * 20));
+          const chartH = Math.min(420, Math.max(280, 220 + allProxyNames.length * 20));
           const sId = 'tcs' + cidCounter;
           const fId = 'tcf' + cidCounter;
           cidCounter++;
@@ -962,7 +963,13 @@
             scales: {
               x: {
                 title: { display: true, text: 'Proxy Type', color: '#6b7280', font: { size: 11 } },
-                ticks: { color: '#6b7280', font: { size: 11 }, maxRotation: 20 },
+                ticks: {
+                  color: '#6b7280',
+                  font: { size: 11 },
+                  maxRotation: 45,
+                  minRotation: 45,
+                  autoSkip: false
+                },
                 grid: { display: false }, border: { display: false }
               },
               y: {
@@ -975,7 +982,7 @@
                 grid: { color: 'rgba(0,0,0,0.05)' }, border: { display: false }
               }
             },
-            layout: { padding: { top: 16 } }
+            layout: { padding: { top: 16, bottom: 10 } }
           },
           plugins: [ChartDataLabels]
         });
