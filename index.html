@@ -194,28 +194,78 @@
     let initialised  = {};
     let allExpanded  = false;
 
-    // ── Fetch sheet data ──────────────────────────────────────────────────────
+    // ── Fetch sheet data via CSV export (CORS-safe, works on GitHub Pages) ──────
     async function fetchSheetData() {
-      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_TAB)}&headers=1`;
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+      // CSV export URL — requires the sheet to be publicly readable.
+      // Finds the GID (tab ID) first by fetching the sheet metadata JSON,
+      // then exports that specific tab as CSV.
+      // Fallback: export the first tab (gid=0) and rely on tab name matching.
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&sheet=${encodeURIComponent(SHEET_TAB)}`;
+
+      const resp = await fetch(csvUrl);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching sheet. Make sure the spreadsheet is shared publicly (Anyone with the link → Viewer).`);
+
       const text = await resp.text();
+      if (!text || text.trim() === '') throw new Error('Sheet returned empty data. Make sure the ProxyLogs tab has data.');
 
-      // Google returns: google.visualization.Query.setResponse({...});
-      const jsonStr = text.replace(/^[^(]+\(/, '').replace(/\);?\s*$/, '');
-      const data    = JSON.parse(jsonStr);
+      return parseCSV(text);
+    }
 
-      if (!data.table || !data.table.rows) return [];
+    // ── Parse CSV text into row objects ───────────────────────────────────────
+    function parseCSV(text) {
+      const lines = text.trim().split('\n');
+      if (lines.length < 2) return [];   // only header or empty
 
-      // Column order from header: date, market, api, proxy, success, failed
-      return data.table.rows.map(r => ({
-        date:    (r.c[0] && r.c[0].v) ? String(r.c[0].v) : '',
-        market:  (r.c[1] && r.c[1].v) ? String(r.c[1].v) : '',
-        api:     (r.c[2] && r.c[2].v) ? String(r.c[2].v) : '',
-        proxy:   (r.c[3] && r.c[3].v) ? String(r.c[3].v) : '',
-        success: (r.c[4] && r.c[4].v) ? Number(r.c[4].v) : 0,
-        failed:  (r.c[5] && r.c[5].v) ? Number(r.c[5].v) : 0
-      })).filter(r => r.date && r.market && r.api && r.proxy);
+      // Parse a single CSV line respecting quoted fields
+      function parseLine(line) {
+        const cols = [];
+        let cur = '', inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+            else inQ = !inQ;
+          } else if (ch === ',' && !inQ) {
+            cols.push(cur.trim()); cur = '';
+          } else {
+            cur += ch;
+          }
+        }
+        cols.push(cur.trim());
+        return cols;
+      }
+
+      const headers = parseLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z]/g, ''));
+      // Expected: date, market, api, proxy, success, failed
+      const idx = {
+        date:    headers.indexOf('date'),
+        market:  headers.indexOf('market'),
+        api:     headers.indexOf('api'),
+        proxy:   headers.indexOf('proxy'),
+        success: headers.indexOf('success'),
+        failed:  headers.indexOf('failed')
+      };
+
+      // Validate all columns exist
+      for (const [key, i] of Object.entries(idx)) {
+        if (i === -1) throw new Error(`Column "${key}" not found in sheet headers: ${headers.join(', ')}`);
+      }
+
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const cols = parseLine(lines[i]);
+        const date    = (cols[idx.date]    || '').trim();
+        const market  = (cols[idx.market]  || '').trim();
+        const api     = (cols[idx.api]     || '').trim();
+        const proxy   = (cols[idx.proxy]   || '').trim();
+        const success = parseInt(cols[idx.success] || '0', 10) || 0;
+        const failed  = parseInt(cols[idx.failed]  || '0', 10) || 0;
+        if (date && market && api && proxy) {
+          rows.push({ date, market, api, proxy, success, failed });
+        }
+      }
+      return rows;
     }
 
     // ── Parse rows into market→api→proxy hierarchy ────────────────────────────
