@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proxy Success &amp; Failure Metrics</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; color: #111827; min-height: 100vh; }
+
+    /* ── Sticky Header ── */
+    .top-header { background:#fff; border-bottom:1px solid #e5e7eb; padding:14px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; position:sticky; top:0; z-index:200; box-shadow:0 1px 4px rgba(0,0,0,.07); }
+    .header-left {}
+    .header-title { font-size:20px; font-weight:700; color:#111827; line-height:1.3; }
+    .header-title .hl-blue   { color:#4361ee; }
+    .header-title .hl-orange { color:#e76f51; }
+    .header-sub { font-size:12px; color:#9ca3af; margin-top:2px; }
+
+    /* ── Date Picker ── */
+    .date-picker-wrap {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .date-label-badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: #4361ee; color: #fff; border-radius: 8px;
+      padding: 8px 14px; font-size: 13px; font-weight: 600; white-space: nowrap;
+    }
+    .date-select-wrap {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .date-select-wrap label { font-size:12px; font-weight:600; color:#6b7280; }
+    #dateSelect {
+      padding: 7px 12px; border: 1.5px solid #d1d5db; border-radius: 8px;
+      font-size: 13px; font-weight: 600; color: #374151; background: #fff;
+      cursor: pointer; outline: none; transition: border-color .15s;
+      min-width: 140px;
+    }
+    #dateSelect:focus { border-color: #4361ee; }
+    #dateSelect option:disabled { color: #d1d5db; }
+
+    /* ── Loading / Error states ── */
+    .state-box {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 300px; gap: 14px; text-align: center;
+    }
+    .state-icon { font-size: 42px; opacity: .5; }
+    .state-title { font-size: 16px; font-weight: 600; color: #374151; }
+    .state-sub { font-size: 13px; color: #9ca3af; max-width: 360px; }
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid #e5e7eb;
+      border-top-color: #4361ee; border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── KPI Strip ── */
+    .kpi-strip { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; padding:18px 28px 0; max-width:1400px; margin:0 auto; }
+    @media(max-width:1100px){ .kpi-strip{grid-template-columns:repeat(3,1fr);} }
+    @media(max-width:640px){ .kpi-strip{grid-template-columns:repeat(2,1fr);} }
+    .kpi-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+    .kpi-icon { width:38px; height:38px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+    .ki-m{background:#eff6ff;} .ki-a{background:#fefce8;} .ki-s{background:#f0fdf4;} .ki-f{background:#fff7ed;} .ki-r{background:#faf5ff;}
+    .kpi-val { font-size:22px; font-weight:800; line-height:1; color:#111827; }
+    .kpi-lbl { font-size:10px; font-weight:600; color:#9ca3af; text-transform:uppercase; letter-spacing:.5px; margin-top:3px; }
+
+    /* ── Page body ── */
+    .page-body { padding:18px 28px 40px; max-width:1400px; margin:0 auto; }
+
+    /* ── Summary Table ── */
+    .table-section { background:#fff; border:1px solid #e5e7eb; border-radius:14px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+    .table-section-header { padding:14px 20px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; background:#fafafa; flex-wrap:wrap; gap:8px; }
+    .table-section-title { font-size:14px; font-weight:700; color:#111827; }
+    .table-section-sub { font-size:12px; color:#9ca3af; }
+    .expand-all-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-size:12px; font-weight:600; color:#6b7280; cursor:pointer; transition:all .15s; }
+    .expand-all-btn:hover { background:#f3f4f6; color:#374151; }
+    .summary-table { width:100%; border-collapse:collapse; }
+    .summary-table thead tr { background:#f9fafb; border-bottom:2px solid #e5e7eb; }
+    .summary-table thead th { padding:10px 16px; text-align:left; font-size:10px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:.7px; white-space:nowrap; }
+    .th-market{width:38%;} .th-num{width:10%;text-align:right;} .th-rate{width:22%;}
+    .summary-row { border-bottom:1px solid #f3f4f6; cursor:pointer; transition:background .12s; }
+    .summary-row:hover { background:#f9fafb; }
+    .row-good:hover{background:#f0fdf4;} .row-warn:hover{background:#fefce8;} .row-bad:hover{background:#fff7ed;}
+    .td-market{padding:12px 16px;} .td-num{padding:12px 16px;text-align:right;font-size:13px;font-variant-numeric:tabular-nums;} .td-apis{color:#6b7280;} .td-rate{padding:12px 16px;}
+    .row-left { display:flex; align-items:center; gap:10px; }
+    .row-chevron { width:20px; height:20px; display:flex; align-items:center; justify-content:center; color:#9ca3af; transition:transform .25s; flex-shrink:0; }
+    .row-chevron.open { transform:rotate(90deg); }
+    .row-badge { width:32px; height:32px; border-radius:8px; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; letter-spacing:.3px; }
+    .row-market-name { font-size:13px; font-weight:700; color:#111827; letter-spacing:.2px; }
+    .rate-cell { display:flex; align-items:center; gap:10px; }
+    .rate-bar-wrap { flex:1; height:6px; background:#e5e7eb; border-radius:3px; overflow:hidden; min-width:60px; }
+    .rate-bar { height:100%; border-radius:3px; }
+    .rate-text { font-size:12px; font-weight:700; width:42px; text-align:right; white-space:nowrap; }
+
+    /* ── Detail row ── */
+    .detail-row { background:#f8faff; }
+    .detail-td { padding:0; border-bottom:2px solid #e5e7eb; }
+    .detail-inner { padding:16px 20px 20px; display:flex; flex-direction:column; gap:14px; }
+
+    /* ── API Card ── */
+    .api-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; }
+    .api-card-header { padding:9px 13px; background:#f9fafb; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:7px; }
+    .api-title { display:flex; align-items:center; gap:7px; }
+    .api-bolt { font-size:13px; }
+    .api-name-text { font-size:13px; font-weight:700; color:#1f2937; }
+    .api-pills { display:flex; gap:5px; flex-wrap:wrap; }
+    .pill { border-radius:20px; padding:2px 9px; font-size:11px; font-weight:600; white-space:nowrap; border:1px solid transparent; }
+    .pill-success{background:#dcfce7;color:#16a34a;border-color:#bbf7d0;}
+    .pill-failed{background:#ffedd5;color:#ea580c;border-color:#fed7aa;}
+    .pill-total{background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;}
+    .pill-rate-good{background:#dcfce7;color:#16a34a;border-color:#bbf7d0;}
+    .pill-rate-warn{background:#fefce8;color:#ca8a04;border-color:#fde68a;}
+    .pill-rate-bad{background:#ffedd5;color:#ea580c;border-color:#fed7aa;}
+
+    /* ── Charts grid ── */
+    .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px 10px 8px; }
+    @media(max-width:800px){ .charts-grid{grid-template-columns:1fr;} }
+    .chart-col { min-width:0; }
+    .chart-col-label { display:flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; margin-bottom:8px; padding-left:2px; }
+    .success-col-label{color:#16a34a;} .failed-col-label{color:#ea580c;}
+    .col-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .success-dot{background:#16a34a;} .failed-dot{background:#ea580c;}
+    .chart-wrap { position:relative; width:100%; }
+    .chart-wrap canvas { display:block; width:100% !important; }
+    .chart-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; border:1.5px dashed #d1d5db; border-radius:8px; background:#f9fafb; }
+    .empty-icon{font-size:26px;opacity:.3;} .empty-text{font-size:12px;color:#9ca3af;text-align:center;padding:0 14px;}
+
+    /* ── Footer ── */
+    .page-footer { text-align:center; padding:16px; color:#9ca3af; font-size:11px; background:#fff; border-top:1px solid #e5e7eb; margin-top:4px; }
+    ::-webkit-scrollbar{width:5px;height:5px;} ::-webkit-scrollbar-track{background:#f3f4f6;} ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px;}
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header class="top-header">
+    <div class="header-left">
+      <div class="header-title">
+        Proxy <span class="hl-blue">Success</span> &amp; <span class="hl-orange">Failure</span> Metrics
+      </div>
+      <div class="header-sub">All Markets &nbsp;·&nbsp; Per API &nbsp;·&nbsp; Per Proxy &nbsp;·&nbsp; Data from Google Sheets</div>
+    </div>
+    <div class="date-picker-wrap">
+      <div class="date-label-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Report Date
+      </div>
+      <div class="date-select-wrap">
+        <label for="dateSelect">Select date:</label>
+        <select id="dateSelect" onchange="onDateChange(this.value)">
+          <option value="" disabled selected>Loading dates…</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── KPI Strip ── -->
+  <div class="kpi-strip" id="kpiStrip">
+    <!-- populated by JS -->
+  </div>
+
+  <!-- ── Main content ── -->
+  <div class="page-body" id="pageBody">
+    <div class="state-box" id="stateBox">
+      <div class="spinner"></div>
+      <div class="state-title">Loading data…</div>
+      <div class="state-sub">Fetching from Google Sheets, please wait.</div>
+    </div>
+  </div>
+
+  <footer class="page-footer" id="pageFooter">
+    Data source: Google Sheets &nbsp;·&nbsp; Timezone: America/New_York (EST/EDT)
+  </footer>
+
+  <script>
+    // ── Config ────────────────────────────────────────────────────────────────
+    const SHEET_ID  = '12rUhAXNMVvoVp2623qYkkhfqWChPPrHQRJfUy6WujmQ';
+    const SHEET_TAB = 'ProxyLogs';
+    const MAX_PROXIES = 10;
+
+    const PROXY_COLORS = [
+      '#4361ee','#f4a261','#2a9d8f','#9b5de5',
+      '#f7b731','#e76f51','#48cae4','#06d6a0',
+      '#ff6b6b','#b5838d'
+    ];
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let allRows      = [];   // raw rows from sheet: {date,market,api,proxy,success,failed}
+    let availDates   = [];   // sorted unique dates from sheet
+    let selectedDate = '';
+    let chartInstances = {}; // canvas id → Chart instance (for destroy on re-render)
+    let initialised  = {};
+    let allExpanded  = false;
+
+    // ── Fetch sheet data ──────────────────────────────────────────────────────
+    async function fetchSheetData() {
+      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_TAB)}&headers=1`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+      const text = await resp.text();
+
+      // Google returns: google.visualization.Query.setResponse({...});
+      const jsonStr = text.replace(/^[^(]+\(/, '').replace(/\);?\s*$/, '');
+      const data    = JSON.parse(jsonStr);
+
+      if (!data.table || !data.table.rows) return [];
+
+      // Column order from header: date, market, api, proxy, success, failed
+      return data.table.rows.map(r => ({
+        date:    (r.c[0] && r.c[0].v) ? String(r.c[0].v) : '',
+        market:  (r.c[1] && r.c[1].v) ? String(r.c[1].v) : '',
+        api:     (r.c[2] && r.c[2].v) ? String(r.c[2].v) : '',
+        proxy:   (r.c[3] && r.c[3].v) ? String(r.c[3].v) : '',
+        success: (r.c[4] && r.c[4].v) ? Number(r.c[4].v) : 0,
+        failed:  (r.c[5] && r.c[5].v) ? Number(r.c[5].v) : 0
+      })).filter(r => r.date && r.market && r.api && r.proxy);
+    }
+
+    // ── Parse rows into market→api→proxy hierarchy ────────────────────────────
+    function buildHierarchy(rows) {
+      const marketMap = new Map();
+
+      for (const row of rows) {
+        if (!marketMap.has(row.market)) {
+          marketMap.set(row.market, { market: row.market, apis: new Map() });
+        }
+        const mkt = marketMap.get(row.market);
+
+        if (!mkt.apis.has(row.api)) {
+          mkt.apis.set(row.api, { api: row.api, success: [], failed: [] });
+        }
+        const api = mkt.apis.get(row.api);
+
+        if (row.success > 0) api.success.push({ proxy: row.proxy, count: row.success });
+        if (row.failed  > 0) api.failed.push({  proxy: row.proxy, count: row.failed  });
+      }
+
+      return Array.from(marketMap.values()).map(m => ({
+        market: m.market,
+        apis: Array.from(m.apis.values()).map(a => ({
+          api:     a.api,
+          success: a.success.sort((x, y) => y.count - x.count).slice(0, MAX_PROXIES),
+          failed:  a.failed.sort( (x, y) => y.count - x.count).slice(0, MAX_PROXIES)
+        }))
+      }));
+    }
+
+    // ── KPI strip ─────────────────────────────────────────────────────────────
+    function renderKPIs(markets) {
+      let totalAPIs = 0, totalSuccess = 0, totalFailed = 0;
+      for (const m of markets) {
+        totalAPIs += m.apis.length;
+        for (const a of m.apis) {
+          totalSuccess += a.success.reduce((s, i) => s + i.count, 0);
+          totalFailed  += a.failed.reduce( (s, i) => s + i.count, 0);
+        }
+      }
+      const totalAttempts = totalSuccess + totalFailed;
+      const rate = totalAttempts > 0 ? ((totalSuccess / totalAttempts) * 100).toFixed(1) : '0.0';
+
+      document.getElementById('kpiStrip').innerHTML = `
+        <div class="kpi-card"><div class="kpi-icon ki-m">🌐</div><div><div class="kpi-val">${markets.length}</div><div class="kpi-lbl">Markets</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon ki-a">⚡</div><div><div class="kpi-val">${totalAPIs}</div><div class="kpi-lbl">APIs</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon ki-s">✅</div><div><div class="kpi-val" style="color:#16a34a">${totalSuccess.toLocaleString()}</div><div class="kpi-lbl">Success Attempts</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon ki-f">❌</div><div><div class="kpi-val" style="color:#ea580c">${totalFailed.toLocaleString()}</div><div class="kpi-lbl">Failed Attempts</div></div></div>
+        <div class="kpi-card"><div class="kpi-icon ki-r">%</div><div><div class="kpi-val" style="color:#4361ee">${rate}%</div><div class="kpi-lbl">Overall Success Rate</div></div></div>
+      `;
+    }
+
+    // ── Render the summary table ───────────────────────────────────────────────
+    function renderTable(markets) {
+      // Destroy existing Chart instances to avoid canvas reuse errors
+      for (const [id, chart] of Object.entries(chartInstances)) {
+        try { chart.destroy(); } catch(e) {}
+      }
+      chartInstances = {};
+      initialised    = {};
+      allExpanded    = false;
+
+      // Sort by success rate desc
+      const sorted = [...markets].sort((a, b) => {
+        const rate = mkt => {
+          let s = 0, f = 0;
+          for (const api of mkt.apis) {
+            s += api.success.reduce((x,i) => x + i.count, 0);
+            f += api.failed.reduce( (x,i) => x + i.count, 0);
+          }
+          const t = s + f;
+          return t > 0 ? s / t : 0;
+        };
+        return rate(b) - rate(a);
+      });
+
+      let summaryRows = '';
+      let cidCounter  = 0;
+
+      for (let mi = 0; mi < sorted.length; mi++) {
+        const market = sorted[mi];
+        const hasData = market.apis.some(a => a.success.length > 0 || a.failed.length > 0);
+        if (!hasData) continue;
+
+        let mSuccess = 0, mFailed = 0;
+        for (const a of market.apis) {
+          mSuccess += a.success.reduce((s,i) => s + i.count, 0);
+          mFailed  += a.failed.reduce( (s,i) => s + i.count, 0);
+        }
+        const mTotal    = mSuccess + mFailed;
+        const mRate     = mTotal > 0 ? ((mSuccess / mTotal) * 100).toFixed(1) : '0.0';
+        const mRateNum  = parseFloat(mRate);
+        const badgeColor= PROXY_COLORS[mi % PROXY_COLORS.length];
+        const rowClass  = mRateNum >= 80 ? 'row-good' : mRateNum >= 50 ? 'row-warn' : 'row-bad';
+        const rateColor = mRateNum >= 80 ? '#16a34a'  : mRateNum >= 50 ? '#ca8a04'  : '#ea580c';
+        const mBadge    = market.market.substring(0, 2).toUpperCase();
+        const marketId  = 'mkt_' + market.market.replace(/[^a-zA-Z0-9]/g, '_');
+
+        // ── API blocks (built into detail row) ─────────────────────────────
+        let apiBlocks = '';
+        for (const api of market.apis) {
+          if (api.success.length === 0 && api.failed.length === 0) continue;
+
+          const aSuccess = api.success.reduce((s,i) => s + i.count, 0);
+          const aFailed  = api.failed.reduce( (s,i) => s + i.count, 0);
+          const aTotal   = aSuccess + aFailed;
+          const aRate    = aTotal > 0 ? ((aSuccess / aTotal) * 100).toFixed(1) : '0.0';
+          const rateClass= parseFloat(aRate) >= 80 ? 'pill-rate-good' : parseFloat(aRate) >= 50 ? 'pill-rate-warn' : 'pill-rate-bad';
+
+          const sLabels = api.success.map(d => d.proxy);
+          const sValues = api.success.map(d => d.count);
+          const sColors = sLabels.map((_, i) => PROXY_COLORS[i % PROXY_COLORS.length]);
+          const fLabels = api.failed.map(d => d.proxy);
+          const fValues = api.failed.map(d => d.count);
+          const fColors = fLabels.map((_, i) => PROXY_COLORS[i % PROXY_COLORS.length]);
+
+          const sH = Math.min(400, Math.max(240, 200 + sLabels.length * 28));
+          const fH = Math.min(400, Math.max(240, 200 + fLabels.length * 28));
+          const sId = 'cs' + cidCounter;
+          const fId = 'cf' + cidCounter;
+          cidCounter++;
+
+          // Store chart data in data attributes for lazy init
+          const sData = JSON.stringify({ labels: sLabels, values: sValues, colors: sColors });
+          const fData = JSON.stringify({ labels: fLabels, values: fValues, colors: fColors });
+
+          const successChart = sLabels.length > 0
+            ? `<div class="chart-wrap" style="height:${sH}px"><canvas id="${sId}" data-chart='${sData.replace(/'/g,"&apos;")}' data-type="success"></canvas></div>`
+            : `<div class="chart-wrap chart-empty" style="height:${Math.max(200,fH)}px"><div class="empty-icon">📋</div><div class="empty-text">No successful proxy attempts recorded</div></div>`;
+
+          const failedChart = fLabels.length > 0
+            ? `<div class="chart-wrap" style="height:${fH}px"><canvas id="${fId}" data-chart='${fData.replace(/'/g,"&apos;")}' data-type="failed"></canvas></div>`
+            : `<div class="chart-wrap chart-empty" style="height:${Math.max(200,sH)}px"><div class="empty-icon">📋</div><div class="empty-text">No failed proxy attempts recorded</div></div>`;
+
+          apiBlocks += `
+            <div class="api-card">
+              <div class="api-card-header">
+                <div class="api-title"><span class="api-bolt">⚡</span><span class="api-name-text">${escHtml(api.api)}</span></div>
+                <div class="api-pills">
+                  <span class="pill pill-success">✓ ${aSuccess.toLocaleString()} success</span>
+                  <span class="pill pill-failed">✗ ${aFailed.toLocaleString()} failed</span>
+                  <span class="pill ${rateClass}">${aRate}% success rate</span>
+                  <span class="pill pill-total">Σ ${aTotal.toLocaleString()} total</span>
+                </div>
+              </div>
+              <div class="charts-grid">
+                <div class="chart-col">
+                  <div class="chart-col-label success-col-label"><span class="col-dot success-dot"></span>SUCCESS</div>
+                  ${successChart}
+                </div>
+                <div class="chart-col">
+                  <div class="chart-col-label failed-col-label"><span class="col-dot failed-dot"></span>FAILED</div>
+                  ${failedChart}
+                </div>
+              </div>
+            </div>`;
+        }
+
+        summaryRows += `
+          <tr class="summary-row ${rowClass}" onclick="toggleMarket('${marketId}')">
+            <td class="td-market">
+              <div class="row-left">
+                <div class="row-chevron" id="chev_${marketId}">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+                <div class="row-badge" style="background:${badgeColor}">${mBadge}</div>
+                <span class="row-market-name">${escHtml(market.market.toUpperCase())}</span>
+              </div>
+            </td>
+            <td class="td-num td-apis">${market.apis.length}</td>
+            <td class="td-num td-success" style="color:#16a34a;font-weight:700">${mSuccess.toLocaleString()}</td>
+            <td class="td-num td-failed"  style="color:#ea580c;font-weight:700">${mFailed.toLocaleString()}</td>
+            <td class="td-rate">
+              <div class="rate-cell">
+                <div class="rate-bar-wrap"><div class="rate-bar" style="width:${Math.min(100,mRateNum)}%;background:${rateColor}"></div></div>
+                <span class="rate-text" style="color:${rateColor}">${mRate}%</span>
+              </div>
+            </td>
+          </tr>
+          <tr class="detail-row" id="${marketId}" style="display:none">
+            <td colspan="5" class="detail-td">
+              <div class="detail-inner">${apiBlocks}</div>
+            </td>
+          </tr>`;
+      }
+
+      document.getElementById('pageBody').innerHTML = `
+        <div class="table-section">
+          <div class="table-section-header">
+            <div>
+              <div class="table-section-title">Market Overview</div>
+              <div class="table-section-sub">Click any row to expand charts &nbsp;·&nbsp; Sorted by success rate &nbsp;·&nbsp; Date: <strong>${selectedDate}</strong></div>
+            </div>
+            <button class="expand-all-btn" onclick="toggleAll()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="expand-icon"><polyline points="6 9 12 15 18 9"/></svg>
+              <span id="expand-label">Expand All</span>
+            </button>
+          </div>
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th class="th-market">Market Name</th>
+                <th class="th-num">APIs</th>
+                <th class="th-num">Success</th>
+                <th class="th-num">Failed</th>
+                <th class="th-rate">Success Rate</th>
+              </tr>
+            </thead>
+            <tbody>${summaryRows}</tbody>
+          </table>
+        </div>`;
+
+      // Update footer
+      document.getElementById('pageFooter').innerHTML =
+        `Data source: Google Sheets (ProxyLogs) &nbsp;·&nbsp; Date: ${selectedDate} &nbsp;·&nbsp; Timezone: America/New_York (EST/EDT)`;
+    }
+
+    // ── Lazy chart init: draw charts in visible detail rows ───────────────────
+    function initChartsInRow(rowId) {
+      const row = document.getElementById(rowId);
+      if (!row) return;
+      const canvases = row.querySelectorAll('canvas[data-chart]');
+      canvases.forEach(canvas => {
+        if (chartInstances[canvas.id]) return; // already drawn
+        const d    = JSON.parse(canvas.getAttribute('data-chart').replace(/&apos;/g,"'"));
+        const type = canvas.getAttribute('data-type');
+        const yTitle = type === 'success' ? 'Success Attempts' : 'Failed Attempts';
+
+        const chart = new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: d.labels,
+            datasets: [{
+              label: type === 'success' ? 'Success' : 'Failed',
+              data:   d.values,
+              backgroundColor: d.colors,
+              borderRadius: 5,
+              borderSkipped: false,
+              barPercentage: 0.55,
+              categoryPercentage: 0.7
+            }]
+          },
+          options: {
+            indexAxis: 'x',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              datalabels: {
+                anchor: 'end', align: 'top', color: '#374151',
+                font: { size: 11, weight: '600' },
+                formatter: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v
+              },
+              tooltip: {
+                callbacks: { label: ctx => '  ' + ctx.parsed.y.toLocaleString() + ' attempts' }
+              }
+            },
+            scales: {
+              x: {
+                title: { display: true, text: 'Proxy Type', color: '#6b7280', font: { size: 11 } },
+                ticks: {
+                  color: '#6b7280', font: { size: 11 }, maxRotation: 20, minRotation: 0,
+                  callback(val) {
+                    const l = this.getLabelForValue(val);
+                    return l.length > 14 ? l.substring(0,13) + '…' : l;
+                  }
+                },
+                grid: { display: false }, border: { display: false }
+              },
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: yTitle + ' (Count)', color: '#6b7280', font: { size: 11 } },
+                ticks: {
+                  color: '#6b7280', font: { size: 11 },
+                  callback: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v
+                },
+                grid: { color: 'rgba(0,0,0,0.05)' }, border: { display: false }
+              }
+            },
+            layout: { padding: { top: 28 } }
+          },
+          plugins: [ChartDataLabels]
+        });
+        chartInstances[canvas.id] = chart;
+      });
+    }
+
+    // ── Toggle a market row ────────────────────────────────────────────────────
+    function toggleMarket(id) {
+      const row     = document.getElementById(id);
+      const chevron = document.getElementById('chev_' + id);
+      if (!row) return;
+      const isOpen = row.style.display !== 'none';
+      row.style.display = isOpen ? 'none' : 'table-row';
+      if (chevron) chevron.classList.toggle('open', !isOpen);
+      if (!isOpen) initChartsInRow(id);
+    }
+
+    // ── Expand / collapse all ─────────────────────────────────────────────────
+    function toggleAll() {
+      allExpanded = !allExpanded;
+      document.querySelectorAll('.detail-row').forEach(r => {
+        r.style.display = allExpanded ? 'table-row' : 'none';
+        if (allExpanded) initChartsInRow(r.id);
+      });
+      document.querySelectorAll('.row-chevron').forEach(c => c.classList.toggle('open', allExpanded));
+      const lbl  = document.getElementById('expand-label');
+      const icon = document.getElementById('expand-icon');
+      if (lbl)  lbl.textContent = allExpanded ? 'Collapse All' : 'Expand All';
+      if (icon) icon.setAttribute('points', allExpanded ? '18 15 12 9 6 15' : '6 9 12 15 18 9');
+    }
+
+    // ── Date selector: populate + handle change ───────────────────────────────
+    function populateDateSelect(dates) {
+      const sel = document.getElementById('dateSelect');
+      sel.innerHTML = '';
+      if (dates.length === 0) {
+        sel.innerHTML = '<option value="" disabled selected>No data available</option>';
+        return;
+      }
+      // Newest date first
+      const sorted = [...dates].sort().reverse();
+      sorted.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        sel.appendChild(opt);
+      });
+      sel.value = sorted[0]; // default: most recent
+    }
+
+    function onDateChange(date) {
+      if (!date) return;
+      selectedDate = date;
+      const rows    = allRows.filter(r => r.date === date);
+      const markets = buildHierarchy(rows);
+      renderKPIs(markets);
+      renderTable(markets);
+    }
+
+    // ── HTML escape helper ────────────────────────────────────────────────────
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    // ── Show error state ──────────────────────────────────────────────────────
+    function showError(msg) {
+      document.getElementById('stateBox') && (document.getElementById('stateBox').innerHTML = '');
+      document.getElementById('pageBody').innerHTML = `
+        <div class="state-box">
+          <div class="state-icon">⚠️</div>
+          <div class="state-title">Failed to load data</div>
+          <div class="state-sub">${escHtml(msg)}</div>
+        </div>`;
+    }
+
+    // ── Bootstrap ─────────────────────────────────────────────────────────────
+    Chart.register(ChartDataLabels);
+    Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    Chart.defaults.color = '#6b7280';
+
+    (async function init() {
+      try {
+        allRows = await fetchSheetData();
+
+        if (allRows.length === 0) {
+          showError('No rows found in the Google Sheet. Run proxyusagelogs.js to populate it.');
+          return;
+        }
+
+        // Collect unique dates
+        availDates = [...new Set(allRows.map(r => r.date))].sort();
+
+        // Populate date selector (only available dates, none disabled)
+        populateDateSelect(availDates);
+
+        // Default to most recent date
+        selectedDate = [...availDates].sort().reverse()[0];
+        document.getElementById('dateSelect').value = selectedDate;
+
+        // Render
+        onDateChange(selectedDate);
+
+      } catch (err) {
+        showError(err.message || 'Unknown error fetching Google Sheet data.');
+        console.error(err);
+      }
+    })();
+  </script>
+</body>
+</html>
