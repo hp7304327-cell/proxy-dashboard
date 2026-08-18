@@ -1,498 +1,1218 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Proxy Success &amp; Failure Metrics | v5</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-  <!-- Flatpickr date range picker -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
-  <style>
-    /* ── Reset ── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; color: #111827; min-height: 100vh; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proxy Success &amp; Failure Metrics | v5</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <!-- Flatpickr date range picker -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <style>
+      /* ── Reset ── */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #f3f4f6;
+        color: #111827;
+        min-height: 100vh;
+      }
 
-    /* ── Sticky Header ── */
-    .top-header { background:#fff; border-bottom:1px solid #e5e7eb; padding:14px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; position:sticky; top:0; z-index:200; box-shadow:0 1px 4px rgba(0,0,0,.07); }
-    .header-title { font-size:20px; font-weight:700; color:#111827; line-height:1.3; }
-    .header-title .hl-blue   { color:#4361ee; }
-    .header-title .hl-orange { color:#e76f51; }
-    .header-sub { font-size:12px; color:#9ca3af; margin-top:2px; }
+      /* ── Sticky Header ── */
+      .top-header {
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 14px 28px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        position: sticky;
+        top: 0;
+        z-index: 200;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
+      }
+      .header-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #111827;
+        line-height: 1.3;
+      }
+      .header-title .hl-blue {
+        color: #4361ee;
+      }
+      .header-title .hl-orange {
+        color: #e76f51;
+      }
+      .header-sub {
+        font-size: 12px;
+        color: #9ca3af;
+        margin-top: 2px;
+      }
 
-    /* ── Date Picker ── */
-    .date-picker-wrap {
-      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    }
-    .date-label-badge {
-      display: inline-flex; align-items: center; gap: 7px;
-      background: #4361ee; color: #fff; border-radius: 8px;
-      padding: 8px 14px; font-size: 13px; font-weight: 600; white-space: nowrap;
-    }
-    .date-select-wrap {
-      display: flex; align-items: center; gap: 8px;
-    }
-    .date-select-wrap label { font-size:12px; font-weight:600; color:#6b7280; }
-    #dateSelect {
-      padding: 7px 12px; border: 1.5px solid #d1d5db; border-radius: 8px;
-      font-size: 13px; font-weight: 600; color: #374151; background: #fff;
-      cursor: pointer; outline: none; transition: border-color .15s;
-      min-width: 140px;
-    }
-    #dateSelect:focus { border-color: #4361ee; }
-    #dateSelect option:disabled { color: #d1d5db; }
+      /* ── Date Picker ── */
+      .date-picker-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .date-label-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: #4361ee;
+        color: #fff;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .date-select-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .date-select-wrap label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b7280;
+      }
+      #dateSelect {
+        padding: 7px 12px;
+        border: 1.5px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        background: #fff;
+        cursor: pointer;
+        outline: none;
+        transition: border-color 0.15s;
+        min-width: 140px;
+      }
+      #dateSelect:focus {
+        border-color: #4361ee;
+      }
+      #dateSelect option:disabled {
+        color: #d1d5db;
+      }
 
-    /* ── View Tabs ── */
-    .view-tabs { display:flex; gap:4px; background:#f3f4f6; border-radius:8px; padding:3px; }
-    .view-tab { padding:5px 14px; border-radius:6px; font-size:12px; font-weight:600; color:#6b7280; cursor:pointer; border:none; background:transparent; transition:all .15s; }
-    .view-tab.active { background:#fff; color:#4361ee; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+      /* ── View Tabs ── */
+      .view-tabs {
+        display: flex;
+        gap: 4px;
+        background: #f3f4f6;
+        border-radius: 8px;
+        padding: 3px;
+      }
+      .view-tab {
+        padding: 5px 14px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b7280;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        transition: all 0.15s;
+      }
+      .view-tab.active {
+        background: #fff;
+        color: #4361ee;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
 
-    /* ── Multi-date range picker ── */
-    .multi-date-wrap { display:none; flex-direction:row; gap:8px; align-items:center; flex-wrap:wrap; }
-    .multi-date-wrap.visible { display:flex; }
-    .multi-date-actions { display:flex; gap:6px; align-items:center; }
-    .multi-btn { padding:5px 12px; border-radius:7px; font-size:11px; font-weight:600; cursor:pointer; border:1.5px solid #e5e7eb; background:#fff; color:#4361ee; transition:all .15s; }
-    .multi-btn:hover { background:#eff6ff; }
-    .multi-btn.clear-btn { color:#ea580c; }
-    .multi-btn.clear-btn:hover { background:#fff7ed; }
-    .multi-limit-msg { font-size:11px; color:#ea580c; display:none; }
-    .multi-limit-msg.visible { display:inline; }
+      /* ── Multi-date range picker ── */
+      .multi-date-wrap {
+        display: none;
+        flex-direction: row;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .multi-date-wrap.visible {
+        display: flex;
+      }
+      .multi-date-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .multi-btn {
+        padding: 5px 12px;
+        border-radius: 7px;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1.5px solid #e5e7eb;
+        background: #fff;
+        color: #4361ee;
+        transition: all 0.15s;
+      }
+      .multi-btn:hover {
+        background: #eff6ff;
+      }
+      .multi-btn.clear-btn {
+        color: #ea580c;
+      }
+      .multi-btn.clear-btn:hover {
+        background: #fff7ed;
+      }
+      .multi-limit-msg {
+        font-size: 11px;
+        color: #ea580c;
+        display: none;
+      }
+      .multi-limit-msg.visible {
+        display: inline;
+      }
 
-    /* Flatpickr trigger button */
-    .date-range-trigger {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 7px 14px; border: 1.5px solid #d1d5db; border-radius: 8px;
-      background: #fff; font-size: 13px; font-weight: 600; color: #374151;
-      cursor: pointer; min-width: 220px; transition: border-color .15s;
-      white-space: nowrap;
-    }
-    .date-range-trigger:hover { border-color: #4361ee; }
-    .date-range-trigger svg { flex-shrink: 0; color: #9ca3af; }
-    .date-range-trigger span { flex: 1; }
+      /* Flatpickr trigger button */
+      .date-range-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 14px;
+        border: 1.5px solid #d1d5db;
+        border-radius: 8px;
+        background: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        cursor: pointer;
+        min-width: 220px;
+        transition: border-color 0.15s;
+        white-space: nowrap;
+      }
+      .date-range-trigger:hover {
+        border-color: #4361ee;
+      }
+      .date-range-trigger svg {
+        flex-shrink: 0;
+        color: #9ca3af;
+      }
+      .date-range-trigger span {
+        flex: 1;
+      }
 
-    /* Flatpickr overrides to match dashboard style */
-    .flatpickr-calendar {
-      border: 1px solid #e5e7eb !important;
-      border-radius: 12px !important;
-      box-shadow: 0 10px 30px rgba(0,0,0,.12) !important;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-      margin-top: 6px !important;
-    }
-    /* Always open below — never above */
-    .flatpickr-calendar.arrowTop { top: auto !important; }
-    .flatpickr-calendar.arrowBottom { bottom: auto !important; }
-    .flatpickr-day.selected,
-    .flatpickr-day.startRange,
-    .flatpickr-day.endRange {
-      background: #4361ee !important;
-      border-color: #4361ee !important;
-    }
-    .flatpickr-day.inRange {
-      background: #dde3ff !important;
-      border-color: #dde3ff !important;
-      color: #3730a3 !important;
-    }
-    .flatpickr-day.flatpickr-disabled {
-      color: #d1d5db !important;
-      cursor: not-allowed !important;
-      text-decoration: line-through;
-    }
+      /* Flatpickr overrides to match dashboard style */
+      .flatpickr-calendar {
+        border: 1px solid #e5e7eb !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        margin-top: 6px !important;
+      }
+      /* Always open below — never above */
+      .flatpickr-calendar.arrowTop {
+        top: auto !important;
+      }
+      .flatpickr-calendar.arrowBottom {
+        bottom: auto !important;
+      }
+      .flatpickr-day.selected,
+      .flatpickr-day.startRange,
+      .flatpickr-day.endRange {
+        background: #4361ee !important;
+        border-color: #4361ee !important;
+      }
+      .flatpickr-day.inRange {
+        background: #dde3ff !important;
+        border-color: #dde3ff !important;
+        color: #3730a3 !important;
+      }
+      .flatpickr-day.flatpickr-disabled {
+        color: #d1d5db !important;
+        cursor: not-allowed !important;
+        text-decoration: line-through;
+      }
 
-    /* ── Refresh button ── */
-    .refresh-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border:1.5px solid #e5e7eb; border-radius:8px; background:#fff; font-size:12px; font-weight:600; color:#374151; cursor:pointer; transition:all .15s; }
-    .refresh-btn:hover { background:#f3f4f6; border-color:#d1d5db; }
-    .refresh-btn.loading svg { animation: spin .7s linear infinite; }
+      /* ── Refresh button ── */
+      .refresh-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 14px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 8px;
+        background: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        color: #374151;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .refresh-btn:hover {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+      }
+      .refresh-btn.loading svg {
+        animation: spin 0.7s linear infinite;
+      }
 
-    /* ── Loading / Error states ── */
-    .state-box {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      min-height: 300px; gap: 14px; text-align: center;
-    }
-    .state-icon { font-size: 42px; opacity: .5; }
-    .state-title { font-size: 16px; font-weight: 600; color: #374151; }
-    .state-sub { font-size: 13px; color: #9ca3af; max-width: 360px; }
-    .spinner {
-      width: 36px; height: 36px; border: 3px solid #e5e7eb;
-      border-top-color: #4361ee; border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+      /* ── Loading / Error states ── */
+      .state-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 300px;
+        gap: 14px;
+        text-align: center;
+      }
+      .state-icon {
+        font-size: 42px;
+        opacity: 0.5;
+      }
+      .state-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #374151;
+      }
+      .state-sub {
+        font-size: 13px;
+        color: #9ca3af;
+        max-width: 360px;
+      }
+      .spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #4361ee;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
 
-    /* ── KPI Strip ── */
-    .kpi-strip { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; padding:18px 28px 0; max-width:1400px; margin:0 auto; }
-    @media(max-width:1100px){ .kpi-strip{grid-template-columns:repeat(3,1fr);} }
-    @media(max-width:640px){ .kpi-strip{grid-template-columns:repeat(2,1fr);} }
-    .kpi-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
-    .kpi-icon { width:38px; height:38px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
-    .ki-m{background:#eff6ff;} .ki-a{background:#fefce8;} .ki-s{background:#f0fdf4;} .ki-f{background:#fff7ed;} .ki-r{background:#faf5ff;}
-    .kpi-val { font-size:22px; font-weight:800; line-height:1; color:#111827; }
-    .kpi-lbl { font-size:10px; font-weight:600; color:#9ca3af; text-transform:uppercase; letter-spacing:.5px; margin-top:3px; }
+      /* ── KPI Strip ── */
+      .kpi-strip {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        padding: 18px 28px 0;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      @media (max-width: 1100px) {
+        .kpi-strip {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+      @media (max-width: 640px) {
+        .kpi-strip {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      .kpi-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      }
+      .kpi-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+      .ki-m {
+        background: #eff6ff;
+      }
+      .ki-a {
+        background: #fefce8;
+      }
+      .ki-s {
+        background: #f0fdf4;
+      }
+      .ki-f {
+        background: #fff7ed;
+      }
+      .ki-r {
+        background: #faf5ff;
+      }
+      .kpi-val {
+        font-size: 22px;
+        font-weight: 800;
+        line-height: 1;
+        color: #111827;
+      }
+      .kpi-lbl {
+        font-size: 10px;
+        font-weight: 600;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 3px;
+      }
 
-    /* ── Page body ── */
-    .page-body { padding:18px 28px 40px; max-width:1400px; margin:0 auto; }
+      /* ── Page body ── */
+      .page-body {
+        padding: 18px 28px 40px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
 
-    /* ── Summary Table ── */
-    .table-section { background:#fff; border:1px solid #e5e7eb; border-radius:14px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.05); }
-    .table-section-header { padding:14px 20px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; background:#fafafa; flex-wrap:wrap; gap:8px; }
-    .table-section-title { font-size:14px; font-weight:700; color:#111827; }
-    .table-section-sub { font-size:12px; color:#9ca3af; }
-    .expand-all-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-size:12px; font-weight:600; color:#6b7280; cursor:pointer; transition:all .15s; }
-    .expand-all-btn:hover { background:#f3f4f6; color:#374151; }
-    .summary-table { width:100%; border-collapse:collapse; }
-    .summary-table thead tr { background:#f9fafb; border-bottom:2px solid #e5e7eb; }
-    .summary-table thead th { padding:10px 16px; text-align:left; font-size:10px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:.7px; white-space:nowrap; }
-    .th-market { width:38%; text-align:left; }
-    .th-num { width:10%; text-align:center !important; }
-    .th-rate { width:22%; text-align:center !important; }
-    .summary-row { border-bottom:1px solid #f3f4f6; cursor:pointer; transition:background .12s; }
-    .summary-row:hover { background:#f9fafb; }
-    .row-good:hover{background:#f0fdf4;} .row-warn:hover{background:#fefce8;} .row-bad:hover{background:#fff7ed;}
-    .td-market { padding:12px 16px; }
-    .td-num { padding:12px 16px; text-align:center !important; font-size:13px; font-variant-numeric:tabular-nums; }
-    .td-apis { color:#6b7280; }
-    .td-rate { padding:12px 16px; text-align:center !important; }
-    .row-left { display:flex; align-items:center; gap:10px; }
-    .row-chevron { width:20px; height:20px; display:flex; align-items:center; justify-content:center; color:#9ca3af; transition:transform .25s; flex-shrink:0; }
-    .row-chevron.open { transform:rotate(90deg); }
-    .row-badge { width:32px; height:32px; border-radius:8px; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; letter-spacing:.3px; }
-    .row-market-name { font-size:13px; font-weight:700; color:#111827; letter-spacing:.2px; }
-    .rate-cell { display:flex; align-items:center; justify-content:center; gap:10px; }
-    .rate-bar-wrap { width:80px; max-width:80px; height:6px; background:#e5e7eb; border-radius:3px; overflow:hidden; flex-shrink:0; }
-    .rate-bar { height:100%; border-radius:3px; }
-    .rate-text { font-size:12px; font-weight:700; width:42px; text-align:right; white-space:nowrap; }
+      /* ── Summary Table ── */
+      .table-section {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+      }
+      .table-section-header {
+        padding: 14px 20px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #fafafa;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .table-section-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #111827;
+      }
+      .table-section-sub {
+        font-size: 12px;
+        color: #9ca3af;
+      }
+      .expand-all-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b7280;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .expand-all-btn:hover {
+        background: #f3f4f6;
+        color: #374151;
+      }
+      .summary-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .summary-table thead tr {
+        background: #f9fafb;
+        border-bottom: 2px solid #e5e7eb;
+      }
+      .summary-table thead th {
+        padding: 10px 16px;
+        text-align: left;
+        font-size: 10px;
+        font-weight: 700;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        white-space: nowrap;
+      }
+      .th-market {
+        width: 38%;
+        text-align: left;
+      }
+      .th-num {
+        width: 10%;
+        text-align: center !important;
+      }
+      .th-rate {
+        width: 22%;
+        text-align: center !important;
+      }
+      .summary-row {
+        border-bottom: 1px solid #f3f4f6;
+        cursor: pointer;
+        transition: background 0.12s;
+      }
+      .summary-row:hover {
+        background: #f9fafb;
+      }
+      .row-good:hover {
+        background: #f0fdf4;
+      }
+      .row-warn:hover {
+        background: #fefce8;
+      }
+      .row-bad:hover {
+        background: #fff7ed;
+      }
+      .td-market {
+        padding: 12px 16px;
+      }
+      .td-num {
+        padding: 12px 16px;
+        text-align: center !important;
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+      }
+      .td-apis {
+        color: #6b7280;
+      }
+      .td-rate {
+        padding: 12px 16px;
+        text-align: center !important;
+      }
+      .row-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .row-chevron {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9ca3af;
+        transition: transform 0.25s;
+        flex-shrink: 0;
+      }
+      .row-chevron.open {
+        transform: rotate(90deg);
+      }
+      .row-badge {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        letter-spacing: 0.3px;
+      }
+      .row-market-name {
+        font-size: 13px;
+        font-weight: 700;
+        color: #111827;
+        letter-spacing: 0.2px;
+      }
+      .rate-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+      .rate-bar-wrap {
+        width: 80px;
+        max-width: 80px;
+        height: 6px;
+        background: #e5e7eb;
+        border-radius: 3px;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+      .rate-bar {
+        height: 100%;
+        border-radius: 3px;
+      }
+      .rate-text {
+        font-size: 12px;
+        font-weight: 700;
+        width: 42px;
+        text-align: right;
+        white-space: nowrap;
+      }
 
-    /* ── Detail row ── */
-    .detail-row { background:#f8faff; }
-    .detail-td { padding:0; border-bottom:2px solid #e5e7eb; }
-    .detail-inner { padding:16px 20px 20px; display:flex; flex-direction:column; gap:14px; }
+      /* ── Detail row ── */
+      .detail-row {
+        background: #f8faff;
+      }
+      .detail-td {
+        padding: 0;
+        border-bottom: 2px solid #e5e7eb;
+      }
+      .detail-inner {
+        padding: 16px 20px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
 
-    /* ── API Card ── */
-    .api-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; }
-    .api-card-header { padding:9px 13px; background:#f9fafb; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:7px; }
-    .api-title { display:flex; align-items:center; gap:7px; }
-    .api-bolt { font-size:13px; }
-    .api-name-text { font-size:13px; font-weight:700; color:#1f2937; }
-    .api-pills { display:flex; gap:5px; flex-wrap:wrap; }
-    .pill { border-radius:20px; padding:2px 9px; font-size:11px; font-weight:600; white-space:nowrap; border:1px solid transparent; }
-    .pill-success{background:#dcfce7;color:#16a34a;border-color:#bbf7d0;}
-    .pill-failed{background:#ffedd5;color:#ea580c;border-color:#fed7aa;}
-    .pill-total{background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;}
-    .pill-rate-good{background:#dcfce7;color:#16a34a;border-color:#bbf7d0;}
-    .pill-rate-warn{background:#fefce8;color:#ca8a04;border-color:#fde68a;}
-    .pill-rate-bad{background:#ffedd5;color:#ea580c;border-color:#fed7aa;}
+      /* ── API Card ── */
+      .api-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .api-card-header {
+        padding: 9px 13px;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+      .api-title {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .api-bolt {
+        font-size: 13px;
+      }
+      .api-name-text {
+        font-size: 13px;
+        font-weight: 700;
+        color: #1f2937;
+      }
+      .api-pills {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      .pill {
+        border-radius: 20px;
+        padding: 2px 9px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        border: 1px solid transparent;
+      }
+      .pill-success {
+        background: #dcfce7;
+        color: #16a34a;
+        border-color: #bbf7d0;
+      }
+      .pill-failed {
+        background: #ffedd5;
+        color: #ea580c;
+        border-color: #fed7aa;
+      }
+      .pill-total {
+        background: #f3f4f6;
+        color: #6b7280;
+        border-color: #e5e7eb;
+      }
+      .pill-rate-good {
+        background: #dcfce7;
+        color: #16a34a;
+        border-color: #bbf7d0;
+      }
+      .pill-rate-warn {
+        background: #fefce8;
+        color: #ca8a04;
+        border-color: #fde68a;
+      }
+      .pill-rate-bad {
+        background: #ffedd5;
+        color: #ea580c;
+        border-color: #fed7aa;
+      }
 
-    /* ── Charts grid ── */
-    .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px 10px 8px; }
-    @media(max-width:800px){ .charts-grid{grid-template-columns:1fr;} }
-    .chart-col { min-width:0; }
-    .chart-col-label { display:flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; margin-bottom:8px; padding-left:2px; }
-    .success-col-label{color:#16a34a;} .failed-col-label{color:#ea580c;}
-    .col-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-    .success-dot{background:#16a34a;} .failed-dot{background:#ea580c;}
-    .chart-wrap { position:relative; width:100%; }
-    .chart-wrap canvas { display:block; width:100% !important; }
-    .chart-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; border:1.5px dashed #d1d5db; border-radius:8px; background:#f9fafb; }
-    .empty-icon{font-size:26px;opacity:.3;} .empty-text{font-size:12px;color:#9ca3af;text-align:center;padding:0 14px;}
+      /* ── Charts grid ── */
+      .charts-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 12px 10px 8px;
+      }
+      @media (max-width: 800px) {
+        .charts-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .chart-col {
+        min-width: 0;
+      }
+      .chart-col-label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        padding-left: 2px;
+      }
+      .success-col-label {
+        color: #16a34a;
+      }
+      .failed-col-label {
+        color: #ea580c;
+      }
+      .col-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .success-dot {
+        background: #16a34a;
+      }
+      .failed-dot {
+        background: #ea580c;
+      }
+      .chart-wrap {
+        position: relative;
+        width: 100%;
+      }
+      .chart-wrap canvas {
+        display: block;
+        width: 100% !important;
+      }
+      .chart-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: 1.5px dashed #d1d5db;
+        border-radius: 8px;
+        background: #f9fafb;
+      }
+      .empty-icon {
+        font-size: 26px;
+        opacity: 0.3;
+      }
+      .empty-text {
+        font-size: 12px;
+        color: #9ca3af;
+        text-align: center;
+        padding: 0 14px;
+      }
 
-    /* ── Trend label ── */
-    .trend-col-label { display:flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; margin-bottom:8px; padding-left:2px; color:#4361ee; }
-    .trend-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; background:#4361ee; }
+      /* ── Trend label ── */
+      .trend-col-label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        padding-left: 2px;
+        color: #4361ee;
+      }
+      .trend-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        background: #4361ee;
+      }
 
-    /* ── Footer ── */
-    .page-footer { text-align:center; padding:16px; color:#9ca3af; font-size:11px; background:#fff; border-top:1px solid #e5e7eb; margin-top:4px; }
-    ::-webkit-scrollbar{width:5px;height:5px;} ::-webkit-scrollbar-track{background:#f3f4f6;} ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px;}
-  </style>
-</head>
-<body>
-
-  <!-- ── Header ── -->
-  <header class="top-header">
-    <div class="header-left">
-      <div class="header-title">
-        Proxy <span class="hl-blue">Success</span> &amp; <span class="hl-orange">Failure</span> Metrics
-      </div>
-      <div class="header-sub">All Markets &nbsp;·&nbsp; Per API &nbsp;·&nbsp; Per Proxy &nbsp;·&nbsp; Data from Google Sheets</div>
-    </div>
-    <div class="date-picker-wrap">
-      <div class="date-label-badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        Report Date
-      </div>
-      <!-- View mode tabs -->
-      <div class="view-tabs">
-        <button class="view-tab active" data-mode="single" onclick="switchView('single')">Single Date</button>
-        <button class="view-tab" data-mode="trend" onclick="switchView('trend')">📈 Trend (7d)</button>
-      </div>
-      <!-- Single date selector -->
-      <div class="date-select-wrap" id="single-date-wrap" style="display:flex; align-items:center; gap:8px;">
-        <label for="dateSelect">Select date:</label>
-        <select id="dateSelect" onchange="onDateChange(this.value)">
-          <option value="" disabled selected>Loading dates…</option>
-        </select>
-      </div>
-      <!-- Multi date range picker (trend mode) — Flatpickr calendar -->
-      <div class="multi-date-wrap" id="multi-date-wrap">
-      <!-- Hidden input that Flatpickr attaches to — placed next to trigger for correct positioning -->
-        <input type="text" id="dateRangeInput" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;">
-        <button class="date-range-trigger" id="dateRangeTrigger" onclick="toggleDatePicker()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <span id="dateRangeLabel">Select date range…</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="multi-date-actions">
-          <button class="multi-btn" onclick="selectLast7()">Last 7 Days</button>
-          <button class="multi-btn clear-btn" onclick="clearDates()">Clear</button>
-          <span class="multi-limit-msg" id="limitMsg">Max 7 days</span>
+      /* ── Footer ── */
+      .page-footer {
+        text-align: center;
+        padding: 16px;
+        color: #9ca3af;
+        font-size: 11px;
+        background: #fff;
+        border-top: 1px solid #e5e7eb;
+        margin-top: 4px;
+      }
+      ::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f3f4f6;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ── Header ── -->
+    <header class="top-header">
+      <div class="header-left">
+        <div class="header-title">
+          Proxy <span class="hl-blue">Success</span> &amp;
+          <span class="hl-orange">Failure</span> Metrics
+        </div>
+        <div class="header-sub">
+          All Markets &nbsp;·&nbsp; Per API &nbsp;·&nbsp; Per Proxy
+          &nbsp;·&nbsp; Data from Google Sheets
         </div>
       </div>
-      <!-- Refresh button -->
-      <button class="refresh-btn" onclick="refreshData()" title="Refresh data from Google Sheets">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-        </svg>
-        Refresh
-      </button>
+      <div class="date-picker-wrap">
+        <div class="date-label-badge">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+          Report Date
+        </div>
+        <!-- View mode tabs -->
+        <div class="view-tabs">
+          <button
+            class="view-tab active"
+            data-mode="single"
+            onclick="switchView('single')"
+          >
+            Single Date
+          </button>
+          <button
+            class="view-tab"
+            data-mode="trend"
+            onclick="switchView('trend')"
+          >
+            📈 Trend (7d)
+          </button>
+        </div>
+        <!-- Single date selector -->
+        <div
+          class="date-select-wrap"
+          id="single-date-wrap"
+          style="display: flex; align-items: center; gap: 8px"
+        >
+          <label for="dateSelect">Select date:</label>
+          <select id="dateSelect" onchange="onDateChange(this.value)">
+            <option value="" disabled selected>Loading dates…</option>
+          </select>
+        </div>
+        <!-- Multi date range picker (trend mode) — Flatpickr calendar -->
+        <div class="multi-date-wrap" id="multi-date-wrap">
+          <!-- Hidden input that Flatpickr attaches to — placed next to trigger for correct positioning -->
+          <input
+            type="text"
+            id="dateRangeInput"
+            style="
+              position: absolute;
+              width: 0;
+              height: 0;
+              opacity: 0;
+              pointer-events: none;
+            "
+          />
+          <button
+            class="date-range-trigger"
+            id="dateRangeTrigger"
+            onclick="toggleDatePicker()"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            <span id="dateRangeLabel">Select date range…</span>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <div class="multi-date-actions">
+            <button class="multi-btn" onclick="selectLast7()">
+              Last 7 Days
+            </button>
+            <button class="multi-btn clear-btn" onclick="clearDates()">
+              Clear
+            </button>
+            <span class="multi-limit-msg" id="limitMsg">Max 7 days</span>
+          </div>
+        </div>
+        <!-- Refresh button -->
+        <button
+          class="refresh-btn"
+          onclick="refreshData()"
+          title="Refresh data from Google Sheets"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="23 4 23 10 17 10" />
+            <polyline points="1 20 1 14 7 14" />
+            <path
+              d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+            />
+          </svg>
+          Refresh
+        </button>
+      </div>
+    </header>
+
+    <!-- ── KPI Strip ── -->
+    <div class="kpi-strip" id="kpiStrip">
+      <!-- populated by JS -->
     </div>
-  </header>
 
-  <!-- ── KPI Strip ── -->
-  <div class="kpi-strip" id="kpiStrip">
-    <!-- populated by JS -->
-  </div>
-
-  <!-- ── Main content ── -->
-  <div class="page-body" id="pageBody">
-    <div class="state-box" id="stateBox">
-      <div class="spinner"></div>
-      <div class="state-title">Loading data…</div>
-      <div class="state-sub">Fetching from Google Sheets, please wait.</div>
+    <!-- ── Main content ── -->
+    <div class="page-body" id="pageBody">
+      <div class="state-box" id="stateBox">
+        <div class="spinner"></div>
+        <div class="state-title">Loading data…</div>
+        <div class="state-sub">Fetching from Google Sheets, please wait.</div>
+      </div>
     </div>
-  </div>
 
-  <footer class="page-footer" id="pageFooter">
-    Data source: Google Sheets &nbsp;·&nbsp; Timezone: America/New_York (EST/EDT)
-  </footer>
+    <footer class="page-footer" id="pageFooter">
+      Data source: Google Sheets &nbsp;·&nbsp; Timezone: America/New_York
+      (EST/EDT)
+    </footer>
 
-  <script>
-    // ── Config ────────────────────────────────────────────────────────────────
-    const SHEET_ID  = '12rUhAXNMVvoVp2623qYkkhfqWChPPrHQRJfUy6WujmQ';
-    const SHEET_TAB = 'ProxyLogs';
-    const MAX_PROXIES = 10;
+    <script>
+      // ── Config ────────────────────────────────────────────────────────────────
+      const SHEET_ID = "12rUhAXNMVvoVp2623qYkkhfqWChPPrHQRJfUy6WujmQ";
+      const SHEET_TAB = "ProxyLogs";
+      const MAX_PROXIES = 10;
 
-    const SHEETS_API_KEY = 'AIzaSyBROtJ6wcXNaO9vnGRt5AbB3uoOFo00G8c';
+      const STANDARD_CHART_HEIGHT = 350;
 
-    const PROXY_COLORS = [
-      '#4361ee','#f4a261','#2a9d8f','#9b5de5',
-      '#f7b731','#e76f51','#48cae4','#06d6a0',
-      '#ff6b6b','#b5838d'
-    ];
+      const SHEETS_API_KEY = "AIzaSyBROtJ6wcXNaO9vnGRt5AbB3uoOFo00G8c";
 
-    const DATE_COLORS = ['#4361ee','#e76f51','#2a9d8f','#9b5de5','#f7b731','#06d6a0','#ff6b6b'];
+      const PROXY_COLORS = [
+        "#4361ee",
+        "#f4a261",
+        "#2a9d8f",
+        "#9b5de5",
+        "#f7b731",
+        "#e76f51",
+        "#48cae4",
+        "#06d6a0",
+        "#ff6b6b",
+        "#b5838d",
+      ];
 
-    // ── State ─────────────────────────────────────────────────────────────────
-    let allRows        = [];
-    let availDates     = [];
-    let selectedDate   = '';
-    let chartInstances = {};
-    let initialised    = {};
-    let allExpanded    = false;
-    let viewMode       = 'single';   // 'single' | 'trend'
-    let selectedDates  = [];         // for trend mode
+      const DATE_COLORS = [
+        "#4361ee",
+        "#e76f51",
+        "#2a9d8f",
+        "#9b5de5",
+        "#f7b731",
+        "#06d6a0",
+        "#ff6b6b",
+      ];
 
-    // ── Number formatter: K / M ───────────────────────────────────────────────
-    function fmtNum(n) {
-      if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-      if (n >= 1000)    return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-      return n.toString();
-    }
+      // ── State ─────────────────────────────────────────────────────────────────
+      let allRows = [];
+      let availDates = [];
+      let selectedDate = "";
+      let chartInstances = {};
+      let initialised = {};
+      let allExpanded = false;
+      let viewMode = "single"; // 'single' | 'trend'
+      let selectedDates = []; // for trend mode
 
-    // ── Fetch sheet data via Google Sheets API v4 ─────────────────────────────
-    async function fetchSheetData() {
-      if (!SHEETS_API_KEY || SHEETS_API_KEY.length < 20) {
-        throw new Error(
-          'API key not set or invalid. Open proxyusagelogs.html and set a valid Google Sheets API Key.'
-        );
+      // ── Number formatter: K / M ───────────────────────────────────────────────
+      function fmtNum(n) {
+        if (n >= 1000000)
+          return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+        if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "K";
+        return n.toString();
       }
-      const range  = encodeURIComponent(`${SHEET_TAB}!A:F`);
-      const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${SHEETS_API_KEY}`;
 
-      let resp;
-      try {
-        resp = await fetch(apiUrl, { cache: 'no-store' });
-      } catch (e) {
-        throw new Error('Network error: ' + e.message);
-      }
+      // ── Fetch sheet data via Google Sheets API v4 ─────────────────────────────
+      async function fetchSheetData() {
+        if (!SHEETS_API_KEY || SHEETS_API_KEY.length < 20) {
+          throw new Error(
+            "API key not set or invalid. Open proxyusagelogs.html and set a valid Google Sheets API Key.",
+          );
+        }
+        const range = encodeURIComponent(`${SHEET_TAB}!A:F`);
+        const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${SHEETS_API_KEY}`;
 
-      if (!resp.ok) {
-        let errMsg = `HTTP ${resp.status}`;
+        let resp;
         try {
-          const errJson = await resp.json();
-          errMsg += ': ' + (errJson.error && errJson.error.message ? errJson.error.message : JSON.stringify(errJson));
-        } catch (_) {}
-        throw new Error(errMsg);
-      }
-
-      const json = await resp.json();
-      const rows  = json.values || [];
-      if (rows.length < 2) return [];
-
-      const headers = rows[0].map(h => h.toLowerCase().replace(/[^a-z]/g, ''));
-      const idx = {
-        date:    headers.indexOf('date'),
-        market:  headers.indexOf('market'),
-        api:     headers.indexOf('api'),
-        proxy:   headers.indexOf('proxy'),
-        success: headers.indexOf('success'),
-        failed:  headers.indexOf('failed')
-      };
-
-      for (const [key, i] of Object.entries(idx)) {
-        if (i === -1) throw new Error(`Column "${key}" not found. Sheet headers: ${headers.join(', ')}`);
-      }
-
-      return rows.slice(1).map(r => ({
-        date:    (r[idx.date]    || '').trim(),
-        market:  (r[idx.market]  || '').trim(),
-        api:     (r[idx.api]     || '').trim(),
-        proxy:   (r[idx.proxy]   || '').trim(),
-        success: parseInt(r[idx.success] || '0', 10) || 0,
-        failed:  parseInt(r[idx.failed]  || '0', 10) || 0
-      })).filter(r => r.date && r.market && r.api && r.proxy);
-    }
-
-    // ── Parse rows into market→api→proxy hierarchy ────────────────────────────
-    function buildHierarchy(rows) {
-      const marketMap = new Map();
-
-      for (const row of rows) {
-        if (!marketMap.has(row.market)) {
-          marketMap.set(row.market, { market: row.market, apis: new Map() });
+          resp = await fetch(apiUrl, { cache: "no-store" });
+        } catch (e) {
+          throw new Error("Network error: " + e.message);
         }
-        const mkt = marketMap.get(row.market);
 
-        if (!mkt.apis.has(row.api)) {
-          mkt.apis.set(row.api, { api: row.api, success: [], failed: [] });
+        if (!resp.ok) {
+          let errMsg = `HTTP ${resp.status}`;
+          try {
+            const errJson = await resp.json();
+            errMsg +=
+              ": " +
+              (errJson.error && errJson.error.message
+                ? errJson.error.message
+                : JSON.stringify(errJson));
+          } catch (_) {}
+          throw new Error(errMsg);
         }
-        const api = mkt.apis.get(row.api);
 
-        if (row.success > 0) api.success.push({ proxy: row.proxy, count: row.success });
-        if (row.failed  > 0) api.failed.push({  proxy: row.proxy, count: row.failed  });
+        const json = await resp.json();
+        const rows = json.values || [];
+        if (rows.length < 2) return [];
+
+        const headers = rows[0].map((h) =>
+          h.toLowerCase().replace(/[^a-z]/g, ""),
+        );
+        const idx = {
+          date: headers.indexOf("date"),
+          market: headers.indexOf("market"),
+          api: headers.indexOf("api"),
+          proxy: headers.indexOf("proxy"),
+          success: headers.indexOf("success"),
+          failed: headers.indexOf("failed"),
+        };
+
+        for (const [key, i] of Object.entries(idx)) {
+          if (i === -1)
+            throw new Error(
+              `Column "${key}" not found. Sheet headers: ${headers.join(", ")}`,
+            );
+        }
+
+        return rows
+          .slice(1)
+          .map((r) => ({
+            date: (r[idx.date] || "").trim(),
+            market: (r[idx.market] || "").trim(),
+            api: (r[idx.api] || "").trim(),
+            proxy: (r[idx.proxy] || "").trim(),
+            success: parseInt(r[idx.success] || "0", 10) || 0,
+            failed: parseInt(r[idx.failed] || "0", 10) || 0,
+          }))
+          .filter((r) => r.date && r.market && r.api && r.proxy);
       }
 
-      return Array.from(marketMap.values()).map(m => ({
-        market: m.market,
-        apis: Array.from(m.apis.values()).map(a => ({
-          api:     a.api,
-          success: a.success.sort((x, y) => y.count - x.count).slice(0, MAX_PROXIES),
-          failed:  a.failed.sort( (x, y) => y.count - x.count).slice(0, MAX_PROXIES)
-        }))
-      }));
-    }
+      // ── Parse rows into market→api→proxy hierarchy ────────────────────────────
+      function buildHierarchy(rows) {
+        const marketMap = new Map();
 
-    // ── KPI strip ─────────────────────────────────────────────────────────────
-    function renderKPIs(markets) {
-      let totalAPIs = 0, totalSuccess = 0, totalFailed = 0;
-      for (const m of markets) {
-        totalAPIs += m.apis.length;
-        for (const a of m.apis) {
-          totalSuccess += a.success.reduce((s, i) => s + i.count, 0);
-          totalFailed  += a.failed.reduce( (s, i) => s + i.count, 0);
+        for (const row of rows) {
+          if (!marketMap.has(row.market)) {
+            marketMap.set(row.market, { market: row.market, apis: new Map() });
+          }
+          const mkt = marketMap.get(row.market);
+
+          if (!mkt.apis.has(row.api)) {
+            mkt.apis.set(row.api, { api: row.api, success: [], failed: [] });
+          }
+          const api = mkt.apis.get(row.api);
+
+          if (row.success > 0)
+            api.success.push({ proxy: row.proxy, count: row.success });
+          if (row.failed > 0)
+            api.failed.push({ proxy: row.proxy, count: row.failed });
         }
-      }
-      const totalAttempts = totalSuccess + totalFailed;
-      const rate = totalAttempts > 0 ? ((totalSuccess / totalAttempts) * 100).toFixed(1) : '0.0';
 
-      document.getElementById('kpiStrip').innerHTML = `
+        return Array.from(marketMap.values()).map((m) => ({
+          market: m.market,
+          apis: Array.from(m.apis.values()).map((a) => ({
+            api: a.api,
+            success: a.success
+              .sort((x, y) => y.count - x.count)
+              .slice(0, MAX_PROXIES),
+            failed: a.failed
+              .sort((x, y) => y.count - x.count)
+              .slice(0, MAX_PROXIES),
+          })),
+        }));
+      }
+
+      // ── KPI strip ─────────────────────────────────────────────────────────────
+      function renderKPIs(markets) {
+        let totalAPIs = 0,
+          totalSuccess = 0,
+          totalFailed = 0;
+        for (const m of markets) {
+          totalAPIs += m.apis.length;
+          for (const a of m.apis) {
+            totalSuccess += a.success.reduce((s, i) => s + i.count, 0);
+            totalFailed += a.failed.reduce((s, i) => s + i.count, 0);
+          }
+        }
+        const totalAttempts = totalSuccess + totalFailed;
+        const rate =
+          totalAttempts > 0
+            ? ((totalSuccess / totalAttempts) * 100).toFixed(1)
+            : "0.0";
+
+        document.getElementById("kpiStrip").innerHTML = `
         <div class="kpi-card"><div class="kpi-icon ki-m">🌐</div><div><div class="kpi-val">${markets.length}</div><div class="kpi-lbl">Markets</div></div></div>
         <div class="kpi-card"><div class="kpi-icon ki-a">⚡</div><div><div class="kpi-val">${totalAPIs}</div><div class="kpi-lbl">APIs</div></div></div>
         <div class="kpi-card"><div class="kpi-icon ki-s">✅</div><div><div class="kpi-val" style="color:#16a34a">${fmtNum(totalSuccess)}</div><div class="kpi-lbl">Success Attempts</div></div></div>
         <div class="kpi-card"><div class="kpi-icon ki-f">❌</div><div><div class="kpi-val" style="color:#ea580c">${fmtNum(totalFailed)}</div><div class="kpi-lbl">Failed Attempts</div></div></div>
         <div class="kpi-card"><div class="kpi-icon ki-r">%</div><div><div class="kpi-val" style="color:#4361ee">${rate}%</div><div class="kpi-lbl">Overall Success Rate</div></div></div>
       `;
-    }
-
-    // ── Render the summary table (single date view) ───────────────────────────
-    function renderTable(markets) {
-      for (const [id, chart] of Object.entries(chartInstances)) {
-        try { chart.destroy(); } catch(e) {}
       }
-      chartInstances = {};
-      initialised    = {};
-      allExpanded    = false;
 
-      // Sort ascending by success rate (0% first = most failures at top)
-      const sorted = [...markets].sort((a, b) => {
-        const rate = mkt => {
-          let s = 0, f = 0;
-          for (const api of mkt.apis) {
-            s += api.success.reduce((x,i) => x + i.count, 0);
-            f += api.failed.reduce( (x,i) => x + i.count, 0);
-          }
-          const t = s + f;
-          return t > 0 ? s / t : 1; // if no data, put at bottom
-        };
-        return rate(a) - rate(b); // ascending: worst first
-      });
-
-      let summaryRows = '';
-      let cidCounter  = 0;
-
-      for (let mi = 0; mi < sorted.length; mi++) {
-        const market = sorted[mi];
-        const hasData = market.apis.some(a => a.success.length > 0 || a.failed.length > 0);
-        if (!hasData) continue;
-
-        let mSuccess = 0, mFailed = 0;
-        for (const a of market.apis) {
-          mSuccess += a.success.reduce((s,i) => s + i.count, 0);
-          mFailed  += a.failed.reduce( (s,i) => s + i.count, 0);
+      // ── Render the summary table (single date view) ───────────────────────────
+      function renderTable(markets) {
+        for (const [id, chart] of Object.entries(chartInstances)) {
+          try {
+            chart.destroy();
+          } catch (e) {}
         }
-        const mTotal    = mSuccess + mFailed;
-        const mRate     = mTotal > 0 ? ((mSuccess / mTotal) * 100).toFixed(1) : '0.0';
-        const mRateNum  = parseFloat(mRate);
-        const badgeColor= PROXY_COLORS[mi % PROXY_COLORS.length];
-        const rowClass  = mRateNum >= 80 ? 'row-good' : mRateNum >= 50 ? 'row-warn' : 'row-bad';
-        const rateColor = mRateNum >= 80 ? '#16a34a'  : mRateNum >= 50 ? '#ca8a04'  : '#ea580c';
-        const mBadge    = market.market.substring(0, 2).toUpperCase();
-        const marketId  = 'mkt_' + market.market.replace(/[^a-zA-Z0-9]/g, '_');
+        chartInstances = {};
+        initialised = {};
+        allExpanded = false;
 
-        let apiBlocks = '';
-        for (const api of market.apis) {
-          if (api.success.length === 0 && api.failed.length === 0) continue;
+        // Sort ascending by success rate (0% first = most failures at top)
+        const sorted = [...markets].sort((a, b) => {
+          const rate = (mkt) => {
+            let s = 0,
+              f = 0;
+            for (const api of mkt.apis) {
+              s += api.success.reduce((x, i) => x + i.count, 0);
+              f += api.failed.reduce((x, i) => x + i.count, 0);
+            }
+            const t = s + f;
+            return t > 0 ? s / t : 1; // if no data, put at bottom
+          };
+          return rate(a) - rate(b); // ascending: worst first
+        });
 
-          const aSuccess = api.success.reduce((s,i) => s + i.count, 0);
-          const aFailed  = api.failed.reduce( (s,i) => s + i.count, 0);
-          const aTotal   = aSuccess + aFailed;
-          const aRate    = aTotal > 0 ? ((aSuccess / aTotal) * 100).toFixed(1) : '0.0';
-          const rateClass= parseFloat(aRate) >= 80 ? 'pill-rate-good' : parseFloat(aRate) >= 50 ? 'pill-rate-warn' : 'pill-rate-bad';
+        let summaryRows = "";
+        let cidCounter = 0;
 
-          const sLabels = api.success.map(d => d.proxy);
-          const sValues = api.success.map(d => d.count);
-          const sColors = sLabels.map((_, i) => PROXY_COLORS[i % PROXY_COLORS.length]);
-          const fLabels = api.failed.map(d => d.proxy);
-          const fValues = api.failed.map(d => d.count);
-          const fColors = fLabels.map((_, i) => PROXY_COLORS[i % PROXY_COLORS.length]);
+        for (let mi = 0; mi < sorted.length; mi++) {
+          const market = sorted[mi];
+          const hasData = market.apis.some(
+            (a) => a.success.length > 0 || a.failed.length > 0,
+          );
+          if (!hasData) continue;
 
-          const sH = Math.min(460, Math.max(300, 240 + sLabels.length * 28));
-          const fH = Math.min(460, Math.max(300, 240 + fLabels.length * 28));
-          const sId = 'cs' + cidCounter;
-          const fId = 'cf' + cidCounter;
-          cidCounter++;
+          let mSuccess = 0,
+            mFailed = 0;
+          for (const a of market.apis) {
+            mSuccess += a.success.reduce((s, i) => s + i.count, 0);
+            mFailed += a.failed.reduce((s, i) => s + i.count, 0);
+          }
+          const mTotal = mSuccess + mFailed;
+          const mRate =
+            mTotal > 0 ? ((mSuccess / mTotal) * 100).toFixed(1) : "0.0";
+          const mRateNum = parseFloat(mRate);
+          const badgeColor = PROXY_COLORS[mi % PROXY_COLORS.length];
+          const rowClass =
+            mRateNum >= 80
+              ? "row-good"
+              : mRateNum >= 50
+                ? "row-warn"
+                : "row-bad";
+          const rateColor =
+            mRateNum >= 80 ? "#16a34a" : mRateNum >= 50 ? "#ca8a04" : "#ea580c";
+          const mBadge = market.market.substring(0, 2).toUpperCase();
+          const marketId = "mkt_" + market.market.replace(/[^a-zA-Z0-9]/g, "_");
 
-          const sData = JSON.stringify({ labels: sLabels, values: sValues, colors: sColors });
-          const fData = JSON.stringify({ labels: fLabels, values: fValues, colors: fColors });
+          let apiBlocks = "";
+          for (const api of market.apis) {
+            if (api.success.length === 0 && api.failed.length === 0) continue;
 
-          const successChart = sLabels.length > 0
-            ? `<div class="chart-wrap" style="height:${sH}px"><canvas id="${sId}" data-chart='${sData.replace(/'/g,"&apos;")}' data-type="success"></canvas></div>`
-            : `<div class="chart-wrap chart-empty" style="height:${Math.max(200,fH)}px"><div class="empty-icon">📋</div><div class="empty-text">No successful proxy attempts recorded</div></div>`;
+            const aSuccess = api.success.reduce((s, i) => s + i.count, 0);
+            const aFailed = api.failed.reduce((s, i) => s + i.count, 0);
+            const aTotal = aSuccess + aFailed;
+            const aRate =
+              aTotal > 0 ? ((aSuccess / aTotal) * 100).toFixed(1) : "0.0";
+            const rateClass =
+              parseFloat(aRate) >= 80
+                ? "pill-rate-good"
+                : parseFloat(aRate) >= 50
+                  ? "pill-rate-warn"
+                  : "pill-rate-bad";
 
-          const failedChart = fLabels.length > 0
-            ? `<div class="chart-wrap" style="height:${fH}px"><canvas id="${fId}" data-chart='${fData.replace(/'/g,"&apos;")}' data-type="failed"></canvas></div>`
-            : `<div class="chart-wrap chart-empty" style="height:${Math.max(200,sH)}px"><div class="empty-icon">📋</div><div class="empty-text">No failed proxy attempts recorded</div></div>`;
+            const sLabels = api.success.map((d) => d.proxy);
+            const sValues = api.success.map((d) => d.count);
+            const sColors = sLabels.map(
+              (_, i) => PROXY_COLORS[i % PROXY_COLORS.length],
+            );
+            const fLabels = api.failed.map((d) => d.proxy);
+            const fValues = api.failed.map((d) => d.count);
+            const fColors = fLabels.map(
+              (_, i) => PROXY_COLORS[i % PROXY_COLORS.length],
+            );
 
-          apiBlocks += `
+            const sH = STANDARD_CHART_HEIGHT;
+            const fH = STANDARD_CHART_HEIGHT;
+            const sId = "cs" + cidCounter;
+            const fId = "cf" + cidCounter;
+            cidCounter++;
+
+            const sData = JSON.stringify({
+              labels: sLabels,
+              values: sValues,
+              colors: sColors,
+            });
+            const fData = JSON.stringify({
+              labels: fLabels,
+              values: fValues,
+              colors: fColors,
+            });
+
+            const successChart =
+              sLabels.length > 0
+                ? `<div class="chart-wrap" style="height:${sH}px"><canvas id="${sId}" data-chart='${sData.replace(/'/g, "&apos;")}' data-type="success"></canvas></div>`
+                : `<div class="chart-wrap chart-empty" style="height:${STANDARD_CHART_HEIGHT}px"><div class="empty-icon">📋</div><div class="empty-text">No successful proxy attempts recorded</div></div>`;
+
+            const failedChart =
+              fLabels.length > 0
+                ? `<div class="chart-wrap" style="height:${fH}px"><canvas id="${fId}" data-chart='${fData.replace(/'/g, "&apos;")}' data-type="failed"></canvas></div>`
+                : `<div class="chart-wrap chart-empty" style="height:${STANDARD_CHART_HEIGHT}px"><div class="empty-icon">📋</div><div class="empty-text">No failed proxy attempts recorded</div></div>`;
+
+            apiBlocks += `
             <div class="api-card">
               <div class="api-card-header">
                 <div class="api-title"><span class="api-bolt">⚡</span><span class="api-name-text">${escHtml(api.api)}</span></div>
@@ -514,9 +1234,9 @@
                 </div>
               </div>
             </div>`;
-        }
+          }
 
-        summaryRows += `
+          summaryRows += `
           <tr class="summary-row ${rowClass}" onclick="toggleMarket('${marketId}')">
             <td class="td-market">
               <div class="row-left">
@@ -532,7 +1252,7 @@
             <td class="td-num td-failed"  style="color:#ea580c;font-weight:700">${fmtNum(mFailed)}</td>
             <td class="td-rate">
               <div class="rate-cell">
-                <div class="rate-bar-wrap"><div class="rate-bar" style="width:${Math.min(100,mRateNum)}%;background:${rateColor}"></div></div>
+                <div class="rate-bar-wrap"><div class="rate-bar" style="width:${Math.min(100, mRateNum)}%;background:${rateColor}"></div></div>
                 <span class="rate-text" style="color:${rateColor}">${mRate}%</span>
               </div>
             </td>
@@ -542,9 +1262,9 @@
               <div class="detail-inner">${apiBlocks}</div>
             </td>
           </tr>`;
-      }
+        }
 
-      document.getElementById('pageBody').innerHTML = `
+        document.getElementById("pageBody").innerHTML = `
         <div class="table-section">
           <div class="table-section-header">
             <div>
@@ -570,467 +1290,578 @@
           </table>
         </div>`;
 
-      document.getElementById('pageFooter').innerHTML =
-        `Data source: Google Sheets (ProxyLogs) &nbsp;·&nbsp; Date: ${selectedDate} &nbsp;·&nbsp; Timezone: America/New_York (EST/EDT)`;
-    }
+        document.getElementById("pageFooter").innerHTML =
+          `Data source: Google Sheets (ProxyLogs) &nbsp;·&nbsp; Date: ${selectedDate} &nbsp;·&nbsp; Timezone: America/New_York (EST/EDT)`;
+      }
 
-    // ── Lazy chart init: draw charts in visible detail rows ───────────────────
-    function initChartsInRow(rowId) {
-      const row = document.getElementById(rowId);
-      if (!row) return;
-      const canvases = row.querySelectorAll('canvas[data-chart]');
-      canvases.forEach(canvas => {
-        if (chartInstances[canvas.id]) return;
-        const d    = JSON.parse(canvas.getAttribute('data-chart').replace(/&apos;/g,"'"));
-        const type = canvas.getAttribute('data-type');
-        const yTitle = type === 'success' ? 'Success Attempts' : 'Failed Attempts';
+      // ── Lazy chart init: draw charts in visible detail rows ───────────────────
+      function initChartsInRow(rowId) {
+        const row = document.getElementById(rowId);
+        if (!row) return;
+        const canvases = row.querySelectorAll("canvas[data-chart]");
+        canvases.forEach((canvas) => {
+          if (chartInstances[canvas.id]) return;
+          const d = JSON.parse(
+            canvas.getAttribute("data-chart").replace(/&apos;/g, "'"),
+          );
+          const type = canvas.getAttribute("data-type");
+          const yTitle =
+            type === "success" ? "Success Attempts" : "Failed Attempts";
 
-        const chart = new Chart(canvas.getContext('2d'), {
-          type: 'bar',
-          data: {
-            labels: d.labels,
-            datasets: [{
-              label: type === 'success' ? 'Success' : 'Failed',
-              data:   d.values,
-              backgroundColor: d.colors,
-              borderRadius: 5,
-              borderSkipped: false,
-              barPercentage: 0.55,
-              categoryPercentage: 0.7
-            }]
-          },
-          options: {
-            indexAxis: 'x',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              datalabels: {
-                anchor: 'end', align: 'top', color: '#374151',
-                font: { size: 11, weight: '600' },
-                formatter: v => fmtNum(v)
-              },
-              tooltip: {
-                callbacks: { label: ctx => '  ' + ctx.parsed.y.toLocaleString() + ' attempts' }
-              }
-            },
-            scales: {
-              x: {
-                title: { display: true, text: 'Proxy Type', color: '#6b7280', font: { size: 11 } },
-                ticks: {
-                  color: '#6b7280',
-                  font: { size: 11 },
-                  maxRotation: 45,
-                  minRotation: 45,
-                  autoSkip: false
+          const chart = new Chart(canvas.getContext("2d"), {
+            type: "bar",
+            data: {
+              labels: d.labels,
+              datasets: [
+                {
+                  label: type === "success" ? "Success" : "Failed",
+                  data: d.values,
+                  backgroundColor: d.colors,
+                  borderRadius: 5,
+                  borderSkipped: false,
+                  barPercentage: 0.55,
+                  categoryPercentage: 0.7,
                 },
-                grid: { display: false },
-                border: { display: false }
-              },
-              y: {
-                beginAtZero: true,
-                title: { display: true, text: yTitle + ' (Count)', color: '#6b7280', font: { size: 11 } },
-                ticks: {
-                  color: '#6b7280', font: { size: 11 },
-                  precision: 0,
-                  callback: v => { if (!Number.isInteger(v)) return ''; return fmtNum(v); }
-                },
-                grid: { color: 'rgba(0,0,0,0.05)' }, border: { display: false }
-              }
+              ],
             },
-            layout: { padding: { top: 28, bottom: 10 } }
-          },
-          plugins: [ChartDataLabels]
+            options: {
+              indexAxis: "x",
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                datalabels: {
+                  anchor: "end",
+                  align: "top",
+                  color: "#374151",
+                  font: { size: 11, weight: "600" },
+                  formatter: (v) => fmtNum(v),
+                },
+                tooltip: {
+                  callbacks: {
+                    label: (ctx) =>
+                      "  " + ctx.parsed.y.toLocaleString() + " attempts",
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  title: {
+                    display: true,
+                    text: "Proxy Type",
+                    color: "#6b7280",
+                    font: { size: 11 },
+                  },
+                  ticks: {
+                    color: "#6b7280",
+                    font: { size: 11 },
+                    maxRotation: 0,
+                    minRotation: 0,
+                    autoSkip: false,
+                    padding: 6,
+                  },
+                  grid: { display: false },
+                  border: { display: false },
+                },
+                y: {
+                  beginAtZero: true,
+                  title: {
+                    display: true,
+                    text: yTitle + " (Count)",
+                    color: "#6b7280",
+                    font: { size: 11 },
+                  },
+                  ticks: {
+                    color: "#6b7280",
+                    font: { size: 11 },
+                    precision: 0,
+                    callback: (v) => {
+                      if (!Number.isInteger(v)) return "";
+                      return fmtNum(v);
+                    },
+                  },
+                  grid: { color: "rgba(0,0,0,0.05)" },
+                  border: { display: false },
+                },
+              },
+              layout: { padding: { top: 28, bottom: 10 } },
+            },
+            plugins: [ChartDataLabels],
+          });
+          chartInstances[canvas.id] = chart;
         });
-        chartInstances[canvas.id] = chart;
-      });
-    }
+      }
 
-    // ── Toggle a market row ────────────────────────────────────────────────────
-    function toggleMarket(id) {
-      const row     = document.getElementById(id);
-      const chevron = document.getElementById('chev_' + id);
-      if (!row) return;
-      const isOpen = row.style.display !== 'none';
-      row.style.display = isOpen ? 'none' : 'table-row';
-      if (chevron) chevron.classList.toggle('open', !isOpen);
-      if (!isOpen) initChartsInRow(id);
-    }
+      // ── Toggle a market row ────────────────────────────────────────────────────
+      function toggleMarket(id) {
+        const row = document.getElementById(id);
+        const chevron = document.getElementById("chev_" + id);
+        if (!row) return;
+        const isOpen = row.style.display !== "none";
+        row.style.display = isOpen ? "none" : "table-row";
+        if (chevron) chevron.classList.toggle("open", !isOpen);
+        if (!isOpen) initChartsInRow(id);
+      }
 
-    // ── Expand / collapse all ─────────────────────────────────────────────────
-    function toggleAll() {
-      allExpanded = !allExpanded;
-      document.querySelectorAll('.detail-row').forEach(r => {
-        r.style.display = allExpanded ? 'table-row' : 'none';
-        if (allExpanded) initChartsInRow(r.id);
-      });
-      document.querySelectorAll('.row-chevron').forEach(c => c.classList.toggle('open', allExpanded));
-      const lbl  = document.getElementById('expand-label');
-      const icon = document.getElementById('expand-icon');
-      if (lbl)  lbl.textContent = allExpanded ? 'Collapse All' : 'Expand All';
-      if (icon) icon.setAttribute('points', allExpanded ? '18 15 12 9 6 15' : '6 9 12 15 18 9');
-    }
+      // ── Expand / collapse all ─────────────────────────────────────────────────
+      function toggleAll() {
+        allExpanded = !allExpanded;
+        document.querySelectorAll(".detail-row").forEach((r) => {
+          r.style.display = allExpanded ? "table-row" : "none";
+          if (allExpanded) initChartsInRow(r.id);
+        });
+        document
+          .querySelectorAll(".row-chevron")
+          .forEach((c) => c.classList.toggle("open", allExpanded));
+        const lbl = document.getElementById("expand-label");
+        const icon = document.getElementById("expand-icon");
+        if (lbl) lbl.textContent = allExpanded ? "Collapse All" : "Expand All";
+        if (icon)
+          icon.setAttribute(
+            "points",
+            allExpanded ? "18 15 12 9 6 15" : "6 9 12 15 18 9",
+          );
+      }
 
-    // ── HTML escape helper ────────────────────────────────────────────────────
-    function escHtml(s) {
-      return String(s)
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
+      // ── HTML escape helper ────────────────────────────────────────────────────
+      function escHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
 
-    // ── Show error state ──────────────────────────────────────────────────────
-    function showError(msg) {
-      document.getElementById('stateBox') && (document.getElementById('stateBox').innerHTML = '');
-      document.getElementById('pageBody').innerHTML = `
+      // ── Show error state ──────────────────────────────────────────────────────
+      function showError(msg) {
+        document.getElementById("stateBox") &&
+          (document.getElementById("stateBox").innerHTML = "");
+        document.getElementById("pageBody").innerHTML = `
         <div class="state-box">
           <div class="state-icon">⚠️</div>
           <div class="state-title">Failed to load data</div>
           <div class="state-sub">${escHtml(msg)}</div>
         </div>`;
-    }
-
-    // ── Date selector: populate + handle change ───────────────────────────────
-    // ── Date selector: populate + init Flatpickr ────────────────────────────
-    let fpInstance = null;  // Flatpickr instance
-
-    function populateDateSelect(dates) {
-      const sel = document.getElementById('dateSelect');
-      sel.innerHTML = '';
-      if (dates.length === 0) {
-        sel.innerHTML = '<option value="" disabled selected>No data available</option>';
-        return;
       }
-      const sorted = [...dates].sort().reverse();
-      sorted.forEach(d => {
-        const opt = document.createElement('option');
-        opt.value = d;
-        opt.textContent = d;
-        sel.appendChild(opt);
-      });
-      sel.value = sorted[0];
 
-      // Initialise / re-initialise Flatpickr for trend mode
-      initFlatpickr(dates);
-    }
+      // ── Date selector: populate + handle change ───────────────────────────────
+      // ── Date selector: populate + init Flatpickr ────────────────────────────
+      let fpInstance = null; // Flatpickr instance
 
-    function initFlatpickr(dates) {
-      const dateSet = new Set(dates);
-      const sorted  = [...dates].sort();  // ascending for min/max
+      function populateDateSelect(dates) {
+        const sel = document.getElementById("dateSelect");
+        sel.innerHTML = "";
+        if (dates.length === 0) {
+          sel.innerHTML =
+            '<option value="" disabled selected>No data available</option>';
+          return;
+        }
+        const sorted = [...dates].sort().reverse();
+        sorted.forEach((d) => {
+          const opt = document.createElement("option");
+          opt.value = d;
+          opt.textContent = d;
+          sel.appendChild(opt);
+        });
+        sel.value = sorted[0];
 
-      if (fpInstance) fpInstance.destroy();
+        // Initialise / re-initialise Flatpickr for trend mode
+        initFlatpickr(dates);
+      }
 
-      fpInstance = flatpickr('#dateRangeInput', {
-        mode: 'range',
-        dateFormat: 'Y-m-d',
-        minDate: sorted[0],
-        maxDate: sorted[sorted.length - 1],
-        enable: sorted,
-        positionElement: document.getElementById('dateRangeTrigger'),
-        onChange: function(selectedDts, dateStr) {
-          if (selectedDts.length === 2) {
-            const [from, to] = selectedDts;
-            const inRange = sorted.filter(d => {
-              const dt = new Date(d);
-              return dt >= from && dt <= to;
-            }).slice(0, 7);
+      function initFlatpickr(dates) {
+        const dateSet = new Set(dates);
+        const sorted = [...dates].sort(); // ascending for min/max
 
-            selectedDates = inRange;
+        if (fpInstance) fpInstance.destroy();
 
-            const total = sorted.filter(d => {
-              const dt = new Date(d);
-              return dt >= from && dt <= to;
-            }).length;
-            const limitMsg = document.getElementById('limitMsg');
-            if (total > 7) {
-              limitMsg.classList.add('visible');
-              setTimeout(() => limitMsg.classList.remove('visible'), 3000);
+        fpInstance = flatpickr("#dateRangeInput", {
+          mode: "range",
+          dateFormat: "Y-m-d",
+          minDate: sorted[0],
+          maxDate: sorted[sorted.length - 1],
+          enable: sorted,
+          positionElement: document.getElementById("dateRangeTrigger"),
+          onChange: function (selectedDts, dateStr) {
+            if (selectedDts.length === 2) {
+              const [from, to] = selectedDts;
+              const inRange = sorted
+                .filter((d) => {
+                  const dt = new Date(d);
+                  return dt >= from && dt <= to;
+                })
+                .slice(0, 7);
+
+              selectedDates = inRange;
+
+              const total = sorted.filter((d) => {
+                const dt = new Date(d);
+                return dt >= from && dt <= to;
+              }).length;
+              const limitMsg = document.getElementById("limitMsg");
+              if (total > 7) {
+                limitMsg.classList.add("visible");
+                setTimeout(() => limitMsg.classList.remove("visible"), 3000);
+              }
+
+              updateDateRangeLabel();
+              renderTrendOrPrompt();
+            } else if (selectedDts.length === 0) {
+              selectedDates = [];
+              updateDateRangeLabel();
+              renderTrendOrPrompt();
             }
+          },
+        });
+      }
 
-            updateDateRangeLabel();
-            renderTrendOrPrompt();
-          } else if (selectedDts.length === 0) {
-            selectedDates = [];
-            updateDateRangeLabel();
-            renderTrendOrPrompt();
+      function toggleDatePicker() {
+        if (fpInstance) {
+          // Position the calendar below the trigger button
+          const trigger = document.getElementById("dateRangeTrigger");
+          const input = document.getElementById("dateRangeInput");
+          if (trigger && input) {
+            const rect = trigger.getBoundingClientRect();
+            // Move the hidden input to sit at the trigger's position
+            input.style.position = "fixed";
+            input.style.top = rect.bottom + window.scrollY + "px";
+            input.style.left = rect.left + "px";
           }
+          fpInstance.toggle();
         }
-      });
-    }
+      }
 
-    function toggleDatePicker() {
-      if (fpInstance) {
-        // Position the calendar below the trigger button
-        const trigger = document.getElementById('dateRangeTrigger');
-        const input   = document.getElementById('dateRangeInput');
-        if (trigger && input) {
-          const rect = trigger.getBoundingClientRect();
-          // Move the hidden input to sit at the trigger's position
-          input.style.position = 'fixed';
-          input.style.top  = (rect.bottom + window.scrollY) + 'px';
-          input.style.left = rect.left + 'px';
+      function updateDateRangeLabel() {
+        const lbl = document.getElementById("dateRangeLabel");
+        if (!lbl) return;
+        if (selectedDates.length === 0) {
+          lbl.textContent = "Select date range…";
+        } else if (selectedDates.length === 1) {
+          lbl.textContent = selectedDates[0];
+        } else {
+          lbl.textContent = `${selectedDates[0]}  →  ${selectedDates[selectedDates.length - 1]} (${selectedDates.length}d)`;
         }
-        fpInstance.toggle();
       }
-    }
 
-    function updateDateRangeLabel() {
-      const lbl = document.getElementById('dateRangeLabel');
-      if (!lbl) return;
-      if (selectedDates.length === 0) {
-        lbl.textContent = 'Select date range…';
-      } else if (selectedDates.length === 1) {
-        lbl.textContent = selectedDates[0];
-      } else {
-        lbl.textContent = `${selectedDates[0]}  →  ${selectedDates[selectedDates.length - 1]} (${selectedDates.length}d)`;
+      function onDateChange(date) {
+        if (!date) return;
+        selectedDate = date;
+        const rows = allRows.filter((r) => r.date === date);
+        const markets = buildHierarchy(rows);
+        renderKPIs(markets);
+        renderTable(markets);
       }
-    }
 
-    function onDateChange(date) {
-      if (!date) return;
-      selectedDate = date;
-      const rows    = allRows.filter(r => r.date === date);
-      const markets = buildHierarchy(rows);
-      renderKPIs(markets);
-      renderTable(markets);
-    }
-
-    // ── View switching ────────────────────────────────────────────────────────
-    function switchView(mode) {
-      viewMode = mode;
-      document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
-      document.getElementById('single-date-wrap').style.display = mode === 'single' ? 'flex' : 'none';
-      document.getElementById('multi-date-wrap').classList.toggle('visible', mode === 'trend');
-      if (mode === 'single') {
-        // Reset state and default to most recent date
-        allExpanded = false;
-        for (const [id, chart] of Object.entries(chartInstances)) {
-          try { chart.destroy(); } catch(e) {}
-        }
-        chartInstances = {};
-        selectedDate = [...availDates].sort().reverse()[0];
-        document.getElementById('dateSelect').value = selectedDate;
-        onDateChange(selectedDate);
-      } else {
-        renderTrendOrPrompt();
-      }
-    }
-
-    // ── Multi-date range picker handlers ─────────────────────────────────────
-    function onMultiDateChange() {
-      // Not used with Flatpickr — handled by fpInstance onChange
-    }
-
-    function selectLast7() {
-      const sorted = [...availDates].sort().reverse().slice(0, 7);
-      selectedDates = [...sorted].sort();  // ascending
-      if (fpInstance && sorted.length >= 2) {
-        fpInstance.setDate([sorted[sorted.length - 1], sorted[0]], false); // set range: oldest to newest
-      }
-      updateDateRangeLabel();
-      renderTrendOrPrompt();
-    }
-
-    function clearDates() {
-      selectedDates = [];
-      if (fpInstance) fpInstance.clear();
-      updateDateRangeLabel();
-      renderTrendOrPrompt();
-    }
-
-    // ── Refresh data ──────────────────────────────────────────────────────────
-    async function refreshData() {
-      const btn = document.querySelector('.refresh-btn');
-      if (btn) btn.classList.add('loading');
-      try {
-        allRows = await fetchSheetData();
-        availDates = [...new Set(allRows.map(r => r.date))].sort();
-        populateDateSelect(availDates);
-        selectedDate = [...availDates].sort().reverse()[0];
-        document.getElementById('dateSelect').value = selectedDate;
-        if (viewMode === 'single') {
+      // ── View switching ────────────────────────────────────────────────────────
+      function switchView(mode) {
+        viewMode = mode;
+        document
+          .querySelectorAll(".view-tab")
+          .forEach((t) =>
+            t.classList.toggle("active", t.dataset.mode === mode),
+          );
+        document.getElementById("single-date-wrap").style.display =
+          mode === "single" ? "flex" : "none";
+        document
+          .getElementById("multi-date-wrap")
+          .classList.toggle("visible", mode === "trend");
+        if (mode === "single") {
+          // Reset state and default to most recent date
+          allExpanded = false;
+          for (const [id, chart] of Object.entries(chartInstances)) {
+            try {
+              chart.destroy();
+            } catch (e) {}
+          }
+          chartInstances = {};
+          selectedDate = [...availDates].sort().reverse()[0];
+          document.getElementById("dateSelect").value = selectedDate;
           onDateChange(selectedDate);
         } else {
           renderTrendOrPrompt();
         }
-      } catch (err) {
-        showError(err.message);
-      } finally {
-        if (btn) btn.classList.remove('loading');
       }
-    }
 
-    // ── Trend or prompt ───────────────────────────────────────────────────────
-    function renderTrendOrPrompt() {
-      if (selectedDates.length < 2) {
-        // Clear KPI strip
-        document.getElementById('kpiStrip').innerHTML = '';
-        document.getElementById('pageBody').innerHTML = `
+      // ── Multi-date range picker handlers ─────────────────────────────────────
+      function onMultiDateChange() {
+        // Not used with Flatpickr — handled by fpInstance onChange
+      }
+
+      function selectLast7() {
+        const sorted = [...availDates].sort().reverse().slice(0, 7);
+        selectedDates = [...sorted].sort(); // ascending
+        if (fpInstance && sorted.length >= 2) {
+          fpInstance.setDate([sorted[sorted.length - 1], sorted[0]], false); // set range: oldest to newest
+        }
+        updateDateRangeLabel();
+        renderTrendOrPrompt();
+      }
+
+      function clearDates() {
+        selectedDates = [];
+        if (fpInstance) fpInstance.clear();
+        updateDateRangeLabel();
+        renderTrendOrPrompt();
+      }
+
+      // ── Refresh data ──────────────────────────────────────────────────────────
+      async function refreshData() {
+        const btn = document.querySelector(".refresh-btn");
+        if (btn) btn.classList.add("loading");
+        try {
+          allRows = await fetchSheetData();
+          availDates = [...new Set(allRows.map((r) => r.date))].sort();
+          populateDateSelect(availDates);
+          selectedDate = [...availDates].sort().reverse()[0];
+          document.getElementById("dateSelect").value = selectedDate;
+          if (viewMode === "single") {
+            onDateChange(selectedDate);
+          } else {
+            renderTrendOrPrompt();
+          }
+        } catch (err) {
+          showError(err.message);
+        } finally {
+          if (btn) btn.classList.remove("loading");
+        }
+      }
+
+      // ── Trend or prompt ───────────────────────────────────────────────────────
+      function renderTrendOrPrompt() {
+        if (selectedDates.length < 2) {
+          // Clear KPI strip
+          document.getElementById("kpiStrip").innerHTML = "";
+          document.getElementById("pageBody").innerHTML = `
           <div class="state-box">
             <div class="state-icon">📈</div>
             <div class="state-title">Select at least 2 dates to view the trend</div>
             <div class="state-sub">Click the date range picker to select a range, or click "Last 7 Days".</div>
           </div>`;
-        document.getElementById('pageFooter').innerHTML =
-          'Data source: Google Sheets &nbsp;·&nbsp; Timezone: America/New_York (EST/EDT)';
-      } else {
-        renderTrendView(selectedDates);
-      }
-    }
-
-    // ── Build flat trend data ─────────────────────────────────────────────────
-    // Returns: [{ market, api, proxy, byDate: { [date]: { success, failed } } }]
-    function buildTrendData(dates) {
-      const dateSet = new Set(dates);
-      const filtered = allRows.filter(r => dateSet.has(r.date));
-
-      // group by market+api+proxy
-      const keyMap = new Map();
-      for (const row of filtered) {
-        const key = `${row.market}\x00${row.api}\x00${row.proxy}`;
-        if (!keyMap.has(key)) {
-          keyMap.set(key, { market: row.market, api: row.api, proxy: row.proxy, byDate: {} });
+          document.getElementById("pageFooter").innerHTML =
+            "Data source: Google Sheets &nbsp;·&nbsp; Timezone: America/New_York (EST/EDT)";
+        } else {
+          renderTrendView(selectedDates);
         }
-        const entry = keyMap.get(key);
-        if (!entry.byDate[row.date]) entry.byDate[row.date] = { success: 0, failed: 0 };
-        entry.byDate[row.date].success += row.success;
-        entry.byDate[row.date].failed  += row.failed;
       }
 
-      return Array.from(keyMap.values());
-    }
+      // ── Build flat trend data ─────────────────────────────────────────────────
+      // Returns: [{ market, api, proxy, byDate: { [date]: { success, failed } } }]
+      function buildTrendData(dates) {
+        const dateSet = new Set(dates);
+        const filtered = allRows.filter((r) => dateSet.has(r.date));
 
-    // ── Render KPIs for trend mode (totals across selected dates) ─────────────
-    function renderTrendKPIs(trendData, dates) {
-      const markets = new Set(trendData.map(r => r.market));
-      const apis    = new Set(trendData.map(r => r.api));
-      let totalSuccess = 0, totalFailed = 0;
-      for (const r of trendData) {
-        for (const d of dates) {
-          if (r.byDate[d]) {
-            totalSuccess += r.byDate[d].success;
-            totalFailed  += r.byDate[d].failed;
+        // group by market+api+proxy
+        const keyMap = new Map();
+        for (const row of filtered) {
+          const key = `${row.market}\x00${row.api}\x00${row.proxy}`;
+          if (!keyMap.has(key)) {
+            keyMap.set(key, {
+              market: row.market,
+              api: row.api,
+              proxy: row.proxy,
+              byDate: {},
+            });
+          }
+          const entry = keyMap.get(key);
+          if (!entry.byDate[row.date])
+            entry.byDate[row.date] = { success: 0, failed: 0 };
+          entry.byDate[row.date].success += row.success;
+          entry.byDate[row.date].failed += row.failed;
+        }
+
+        return Array.from(keyMap.values());
+      }
+
+      // ── Render KPIs for trend mode (totals across selected dates) ─────────────
+      function renderTrendKPIs(trendData, dates) {
+        const markets = new Set(trendData.map((r) => r.market));
+        const apis = new Set(trendData.map((r) => r.api));
+        let totalSuccess = 0,
+          totalFailed = 0;
+        for (const r of trendData) {
+          for (const d of dates) {
+            if (r.byDate[d]) {
+              totalSuccess += r.byDate[d].success;
+              totalFailed += r.byDate[d].failed;
+            }
           }
         }
-      }
-      const totalAttempts = totalSuccess + totalFailed;
-      const rate = totalAttempts > 0 ? ((totalSuccess / totalAttempts) * 100).toFixed(1) : '0.0';
+        const totalAttempts = totalSuccess + totalFailed;
+        const rate =
+          totalAttempts > 0
+            ? ((totalSuccess / totalAttempts) * 100).toFixed(1)
+            : "0.0";
 
-      document.getElementById('kpiStrip').innerHTML = `
+        document.getElementById("kpiStrip").innerHTML = `
         <div class="kpi-card"><div class="kpi-icon ki-m">🌐</div><div><div class="kpi-val">${markets.size}</div><div class="kpi-lbl">Markets</div></div></div>
         <div class="kpi-card"><div class="kpi-icon ki-a">⚡</div><div><div class="kpi-val">${apis.size}</div><div class="kpi-lbl">APIs</div></div></div>
         <div class="kpi-card"><div class="kpi-icon ki-s">✅</div><div><div class="kpi-val" style="color:#16a34a">${fmtNum(totalSuccess)}</div><div class="kpi-lbl">Success Attempts</div></div></div>
         <div class="kpi-card"><div class="kpi-icon ki-f">❌</div><div><div class="kpi-val" style="color:#ea580c">${fmtNum(totalFailed)}</div><div class="kpi-lbl">Failed Attempts</div></div></div>
         <div class="kpi-card"><div class="kpi-icon ki-r">%</div><div><div class="kpi-val" style="color:#4361ee">${rate}%</div><div class="kpi-lbl">Overall Success Rate</div></div></div>
       `;
-    }
-
-    // ── Render trend market table ──────────────────────────────────────────────
-    function renderTrendMarketTable(trendData, dates) {
-      // Destroy existing charts
-      for (const [id, chart] of Object.entries(chartInstances)) {
-        try { chart.destroy(); } catch(e) {}
-      }
-      chartInstances = {};
-      allExpanded = false;
-
-      // Group by market
-      const marketMap = new Map();
-      for (const row of trendData) {
-        if (!marketMap.has(row.market)) marketMap.set(row.market, []);
-        marketMap.get(row.market).push(row);
       }
 
-      // Sort ascending by success rate (worst = most failures at top)
-      const marketList = Array.from(marketMap.entries()).map(([market, rows]) => {
-        let s = 0, f = 0;
-        for (const r of rows) {
-          for (const d of dates) {
-            if (r.byDate[d]) { s += r.byDate[d].success; f += r.byDate[d].failed; }
-          }
+      // ── Render trend market table ──────────────────────────────────────────────
+      function renderTrendMarketTable(trendData, dates) {
+        // Destroy existing charts
+        for (const [id, chart] of Object.entries(chartInstances)) {
+          try {
+            chart.destroy();
+          } catch (e) {}
         }
-        return { market, rows, totalSuccess: s, totalFailed: f };
-      }).sort((a, b) => {
-        const ra = (a.totalSuccess + a.totalFailed) > 0 ? a.totalSuccess / (a.totalSuccess + a.totalFailed) : 1;
-        const rb = (b.totalSuccess + b.totalFailed) > 0 ? b.totalSuccess / (b.totalSuccess + b.totalFailed) : 1;
-        return ra - rb; // ascending: worst first
-      });
+        chartInstances = {};
+        allExpanded = false;
 
-      let summaryRows = '';
-      let cidCounter  = 0;
-
-      for (let mi = 0; mi < marketList.length; mi++) {
-        const { market, rows, totalSuccess: mSuccess, totalFailed: mFailed } = marketList[mi];
-        const mTotal   = mSuccess + mFailed;
-        const mRate    = mTotal > 0 ? ((mSuccess / mTotal) * 100).toFixed(1) : '0.0';
-        const mRateNum = parseFloat(mRate);
-        const badgeColor = PROXY_COLORS[mi % PROXY_COLORS.length];
-        const rowClass   = mRateNum >= 80 ? 'row-good' : mRateNum >= 50 ? 'row-warn' : 'row-bad';
-        const rateColor  = mRateNum >= 80 ? '#16a34a'  : mRateNum >= 50 ? '#ca8a04'  : '#ea580c';
-        const mBadge     = market.substring(0, 2).toUpperCase();
-        const marketId   = 'tmkt_' + market.replace(/[^a-zA-Z0-9]/g, '_');
-
-        // Group rows by api
-        const apiMap = new Map();
-        for (const row of rows) {
-          if (!apiMap.has(row.api)) apiMap.set(row.api, []);
-          apiMap.get(row.api).push(row);
+        // Group by market
+        const marketMap = new Map();
+        for (const row of trendData) {
+          if (!marketMap.has(row.market)) marketMap.set(row.market, []);
+          marketMap.get(row.market).push(row);
         }
-        const uniqueApis = new Set(rows.map(r => r.api));
 
-        let apiBlocks = '';
-        for (const [apiName, apiRows] of apiMap.entries()) {
-          let aSuccess = 0, aFailed = 0;
-          for (const r of apiRows) {
-            for (const d of dates) {
-              if (r.byDate[d]) { aSuccess += r.byDate[d].success; aFailed += r.byDate[d].failed; }
+        // Sort ascending by success rate (worst = most failures at top)
+        const marketList = Array.from(marketMap.entries())
+          .map(([market, rows]) => {
+            let s = 0,
+              f = 0;
+            for (const r of rows) {
+              for (const d of dates) {
+                if (r.byDate[d]) {
+                  s += r.byDate[d].success;
+                  f += r.byDate[d].failed;
+                }
+              }
             }
+            return { market, rows, totalSuccess: s, totalFailed: f };
+          })
+          .sort((a, b) => {
+            const ra =
+              a.totalSuccess + a.totalFailed > 0
+                ? a.totalSuccess / (a.totalSuccess + a.totalFailed)
+                : 1;
+            const rb =
+              b.totalSuccess + b.totalFailed > 0
+                ? b.totalSuccess / (b.totalSuccess + b.totalFailed)
+                : 1;
+            return ra - rb; // ascending: worst first
+          });
+
+        let summaryRows = "";
+        let cidCounter = 0;
+
+        for (let mi = 0; mi < marketList.length; mi++) {
+          const {
+            market,
+            rows,
+            totalSuccess: mSuccess,
+            totalFailed: mFailed,
+          } = marketList[mi];
+          const mTotal = mSuccess + mFailed;
+          const mRate =
+            mTotal > 0 ? ((mSuccess / mTotal) * 100).toFixed(1) : "0.0";
+          const mRateNum = parseFloat(mRate);
+          const badgeColor = PROXY_COLORS[mi % PROXY_COLORS.length];
+          const rowClass =
+            mRateNum >= 80
+              ? "row-good"
+              : mRateNum >= 50
+                ? "row-warn"
+                : "row-bad";
+          const rateColor =
+            mRateNum >= 80 ? "#16a34a" : mRateNum >= 50 ? "#ca8a04" : "#ea580c";
+          const mBadge = market.substring(0, 2).toUpperCase();
+          const marketId = "tmkt_" + market.replace(/[^a-zA-Z0-9]/g, "_");
+
+          // Group rows by api
+          const apiMap = new Map();
+          for (const row of rows) {
+            if (!apiMap.has(row.api)) apiMap.set(row.api, []);
+            apiMap.get(row.api).push(row);
           }
-          const aTotal   = aSuccess + aFailed;
-          const aRate    = aTotal > 0 ? ((aSuccess / aTotal) * 100).toFixed(1) : '0.0';
-          const rateClass= parseFloat(aRate) >= 80 ? 'pill-rate-good' : parseFloat(aRate) >= 50 ? 'pill-rate-warn' : 'pill-rate-bad';
+          const uniqueApis = new Set(rows.map((r) => r.api));
 
-          // All unique proxy names for this market+api across all selected dates
-          const allProxyNames = [...new Set(apiRows.map(r => r.proxy))];
-
-          // Build lookup: proxy → { [date]: {success, failed} }
-          const proxyDateMap = {};
-          for (const r of apiRows) {
-            if (!proxyDateMap[r.proxy]) proxyDateMap[r.proxy] = {};
-            for (const d of dates) {
-              proxyDateMap[r.proxy][d] = r.byDate[d] || { success: 0, failed: 0 };
+          let apiBlocks = "";
+          for (const [apiName, apiRows] of apiMap.entries()) {
+            let aSuccess = 0,
+              aFailed = 0;
+            for (const r of apiRows) {
+              for (const d of dates) {
+                if (r.byDate[d]) {
+                  aSuccess += r.byDate[d].success;
+                  aFailed += r.byDate[d].failed;
+                }
+              }
             }
-          }
+            const aTotal = aSuccess + aFailed;
+            const aRate =
+              aTotal > 0 ? ((aSuccess / aTotal) * 100).toFixed(1) : "0.0";
+            const rateClass =
+              parseFloat(aRate) >= 80
+                ? "pill-rate-good"
+                : parseFloat(aRate) >= 50
+                  ? "pill-rate-warn"
+                  : "pill-rate-bad";
 
-          const chartH = Math.min(420, Math.max(280, 220 + allProxyNames.length * 20));
-          const sId = 'tcs' + cidCounter;
-          const fId = 'tcf' + cidCounter;
-          cidCounter++;
+            // All unique proxy names for this market+api across all selected dates
+            const allProxyNames = [...new Set(apiRows.map((r) => r.proxy))];
 
-          // Encode chart data for lazy init
-          const sDatasets = dates.map((date, di) => ({
-            label: date,
-            data: allProxyNames.map(proxy => (proxyDateMap[proxy] && proxyDateMap[proxy][date]) ? proxyDateMap[proxy][date].success : 0),
-            backgroundColor: DATE_COLORS[di % DATE_COLORS.length],
-            borderRadius: 4,
-            barPercentage: 0.7,
-            categoryPercentage: 0.8
-          }));
-          const fDatasets = dates.map((date, di) => ({
-            label: date,
-            data: allProxyNames.map(proxy => (proxyDateMap[proxy] && proxyDateMap[proxy][date]) ? proxyDateMap[proxy][date].failed : 0),
-            backgroundColor: DATE_COLORS[di % DATE_COLORS.length],
-            borderRadius: 4,
-            barPercentage: 0.7,
-            categoryPercentage: 0.8
-          }));
+            // Build lookup: proxy → { [date]: {success, failed} }
+            const proxyDateMap = {};
+            for (const r of apiRows) {
+              if (!proxyDateMap[r.proxy]) proxyDateMap[r.proxy] = {};
+              for (const d of dates) {
+                proxyDateMap[r.proxy][d] = r.byDate[d] || {
+                  success: 0,
+                  failed: 0,
+                };
+              }
+            }
 
-          const sTrendData = JSON.stringify({ labels: allProxyNames, datasets: sDatasets });
-          const fTrendData = JSON.stringify({ labels: allProxyNames, datasets: fDatasets });
+            const chartH = STANDARD_CHART_HEIGHT;
+            const sId = "tcs" + cidCounter;
+            const fId = "tcf" + cidCounter;
+            cidCounter++;
 
-          const successTrendChart = `<div class="chart-wrap" style="height:${chartH}px"><canvas id="${sId}" data-trend='${sTrendData.replace(/'/g,"&apos;")}' data-trend-type="success"></canvas></div>`;
-          const failedTrendChart  = `<div class="chart-wrap" style="height:${chartH}px"><canvas id="${fId}" data-trend='${fTrendData.replace(/'/g,"&apos;")}' data-trend-type="failed"></canvas></div>`;
+            // Encode chart data for lazy init
+            const sDatasets = dates.map((date, di) => ({
+              label: date,
+              data: allProxyNames.map((proxy) =>
+                proxyDateMap[proxy] && proxyDateMap[proxy][date]
+                  ? proxyDateMap[proxy][date].success
+                  : 0,
+              ),
+              backgroundColor: DATE_COLORS[di % DATE_COLORS.length],
+              borderRadius: 4,
+              barPercentage: 0.7,
+              categoryPercentage: 0.8,
+            }));
+            const fDatasets = dates.map((date, di) => ({
+              label: date,
+              data: allProxyNames.map((proxy) =>
+                proxyDateMap[proxy] && proxyDateMap[proxy][date]
+                  ? proxyDateMap[proxy][date].failed
+                  : 0,
+              ),
+              backgroundColor: DATE_COLORS[di % DATE_COLORS.length],
+              borderRadius: 4,
+              barPercentage: 0.7,
+              categoryPercentage: 0.8,
+            }));
 
-          apiBlocks += `
+            const sTrendData = JSON.stringify({
+              labels: allProxyNames,
+              datasets: sDatasets,
+            });
+            const fTrendData = JSON.stringify({
+              labels: allProxyNames,
+              datasets: fDatasets,
+            });
+
+            const successTrendChart = `<div class="chart-wrap" style="height:${chartH}px"><canvas id="${sId}" data-trend='${sTrendData.replace(/'/g, "&apos;")}' data-trend-type="success"></canvas></div>`;
+            const failedTrendChart = `<div class="chart-wrap" style="height:${chartH}px"><canvas id="${fId}" data-trend='${fTrendData.replace(/'/g, "&apos;")}' data-trend-type="failed"></canvas></div>`;
+
+            apiBlocks += `
             <div class="api-card">
               <div class="api-card-header">
                 <div class="api-title"><span class="api-bolt">⚡</span><span class="api-name-text">${escHtml(apiName)}</span></div>
@@ -1052,9 +1883,9 @@
                 </div>
               </div>
             </div>`;
-        }
+          }
 
-        summaryRows += `
+          summaryRows += `
           <tr class="summary-row ${rowClass}" onclick="toggleTrendMarket('${marketId}')">
             <td class="td-market">
               <div class="row-left">
@@ -1070,7 +1901,7 @@
             <td class="td-num td-failed"  style="color:#ea580c;font-weight:700">${fmtNum(mFailed)}</td>
             <td class="td-rate">
               <div class="rate-cell">
-                <div class="rate-bar-wrap"><div class="rate-bar" style="width:${Math.min(100,mRateNum)}%;background:${rateColor}"></div></div>
+                <div class="rate-bar-wrap"><div class="rate-bar" style="width:${Math.min(100, mRateNum)}%;background:${rateColor}"></div></div>
                 <span class="rate-text" style="color:${rateColor}">${mRate}%</span>
               </div>
             </td>
@@ -1080,108 +1911,144 @@
               <div class="detail-inner">${apiBlocks}</div>
             </td>
           </tr>`;
+        }
+
+        return summaryRows;
       }
 
-      return summaryRows;
-    }
+      // ── Lazy init for trend charts ─────────────────────────────────────────────
+      function initTrendChartsInRow(rowId) {
+        const row = document.getElementById(rowId);
+        if (!row) return;
+        const canvases = row.querySelectorAll("canvas[data-trend]");
+        canvases.forEach((canvas) => {
+          if (chartInstances[canvas.id]) return;
+          const d = JSON.parse(
+            canvas.getAttribute("data-trend").replace(/&apos;/g, "'"),
+          );
+          const type = canvas.getAttribute("data-trend-type");
 
-    // ── Lazy init for trend charts ─────────────────────────────────────────────
-    function initTrendChartsInRow(rowId) {
-      const row = document.getElementById(rowId);
-      if (!row) return;
-      const canvases = row.querySelectorAll('canvas[data-trend]');
-      canvases.forEach(canvas => {
-        if (chartInstances[canvas.id]) return;
-        const d    = JSON.parse(canvas.getAttribute('data-trend').replace(/&apos;/g,"'"));
-        const type = canvas.getAttribute('data-trend-type');
-
-        const chart = new Chart(canvas.getContext('2d'), {
-          type: 'bar',
-          data: {
-            labels: d.labels,
-            datasets: d.datasets
-          },
-          options: {
-            indexAxis: 'x',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
-              datalabels: { display: false },
-              tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}` } }
+          const chart = new Chart(canvas.getContext("2d"), {
+            type: "bar",
+            data: {
+              labels: d.labels,
+              datasets: d.datasets,
             },
-            scales: {
-              x: {
-                title: { display: true, text: 'Proxy Type', color: '#6b7280', font: { size: 11 } },
-                ticks: {
-                  color: '#6b7280',
-                  font: { size: 11 },
-                  maxRotation: 45,
-                  minRotation: 45,
-                  autoSkip: false
+            options: {
+              indexAxis: "x",
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: true,
+                  position: "top",
+                  labels: { boxWidth: 12, font: { size: 11 } },
                 },
-                grid: { display: false }, border: { display: false }
+                datalabels: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: (ctx) =>
+                      ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}`,
+                  },
+                },
               },
-              y: {
-                beginAtZero: true,
-                title: { display: true, text: 'COUNT', color: '#6b7280', font: { size: 11 } },
-                ticks: {
-                  color: '#6b7280', font: { size: 11 },
-                  precision: 0,
-                  callback: v => { if (!Number.isInteger(v)) return ''; return fmtNum(v); }
+              scales: {
+                x: {
+                  title: {
+                    display: true,
+                    text: "Proxy Type",
+                    color: "#6b7280",
+                    font: { size: 11 },
+                  },
+                  ticks: {
+                    color: "#6b7280",
+                    font: { size: 11 },
+                    maxRotation: 0,
+                    minRotation: 0,
+                    autoSkip: false,
+                    padding: 6,
+                  },
+                  grid: { display: false },
+                  border: { display: false },
                 },
-                grid: { color: 'rgba(0,0,0,0.05)' }, border: { display: false }
-              }
+                y: {
+                  beginAtZero: true,
+                  title: {
+                    display: true,
+                    text: "COUNT",
+                    color: "#6b7280",
+                    font: { size: 11 },
+                  },
+                  ticks: {
+                    color: "#6b7280",
+                    font: { size: 11 },
+                    precision: 0,
+                    callback: (v) => {
+                      if (!Number.isInteger(v)) return "";
+                      return fmtNum(v);
+                    },
+                  },
+                  grid: { color: "rgba(0,0,0,0.05)" },
+                  border: { display: false },
+                },
+              },
+              layout: { padding: { top: 16, bottom: 10 } },
             },
-            layout: { padding: { top: 16, bottom: 10 } }
-          },
-          plugins: [ChartDataLabels]
+            plugins: [ChartDataLabels],
+          });
+          chartInstances[canvas.id] = chart;
         });
-        chartInstances[canvas.id] = chart;
-      });
-    }
-
-    // ── Toggle trend market row ────────────────────────────────────────────────
-    function toggleTrendMarket(id) {
-      const row     = document.getElementById(id);
-      const chevron = document.getElementById('chev_' + id);
-      if (!row) return;
-      const isOpen = row.style.display !== 'none';
-      row.style.display = isOpen ? 'none' : 'table-row';
-      if (chevron) chevron.classList.toggle('open', !isOpen);
-      if (!isOpen) initTrendChartsInRow(id);
-    }
-
-    // ── Trend expand all ───────────────────────────────────────────────────────
-    function toggleTrendAll() {
-      allExpanded = !allExpanded;
-      document.querySelectorAll('.detail-row').forEach(r => {
-        r.style.display = allExpanded ? 'table-row' : 'none';
-        if (allExpanded) initTrendChartsInRow(r.id);
-      });
-      document.querySelectorAll('.row-chevron').forEach(c => c.classList.toggle('open', allExpanded));
-      const lbl  = document.getElementById('expand-label');
-      const icon = document.getElementById('expand-icon');
-      if (lbl)  lbl.textContent = allExpanded ? 'Collapse All' : 'Expand All';
-      if (icon) icon.setAttribute('points', allExpanded ? '18 15 12 9 6 15' : '6 9 12 15 18 9');
-    }
-
-    // ── Main trend view renderer ───────────────────────────────────────────────
-    function renderTrendView(dates) {
-      // Destroy any old charts
-      for (const [id, chart] of Object.entries(chartInstances)) {
-        try { chart.destroy(); } catch(e) {}
       }
-      chartInstances = {};
-      allExpanded = false;
 
-      const trendData = buildTrendData(dates);
-      renderTrendKPIs(trendData, dates);
+      // ── Toggle trend market row ────────────────────────────────────────────────
+      function toggleTrendMarket(id) {
+        const row = document.getElementById(id);
+        const chevron = document.getElementById("chev_" + id);
+        if (!row) return;
+        const isOpen = row.style.display !== "none";
+        row.style.display = isOpen ? "none" : "table-row";
+        if (chevron) chevron.classList.toggle("open", !isOpen);
+        if (!isOpen) initTrendChartsInRow(id);
+      }
 
-      const summaryRows = renderTrendMarketTable(trendData, dates);
-      const dateRange   = dates[0] + ' → ' + dates[dates.length - 1];
+      // ── Trend expand all ───────────────────────────────────────────────────────
+      function toggleTrendAll() {
+        allExpanded = !allExpanded;
+        document.querySelectorAll(".detail-row").forEach((r) => {
+          r.style.display = allExpanded ? "table-row" : "none";
+          if (allExpanded) initTrendChartsInRow(r.id);
+        });
+        document
+          .querySelectorAll(".row-chevron")
+          .forEach((c) => c.classList.toggle("open", allExpanded));
+        const lbl = document.getElementById("expand-label");
+        const icon = document.getElementById("expand-icon");
+        if (lbl) lbl.textContent = allExpanded ? "Collapse All" : "Expand All";
+        if (icon)
+          icon.setAttribute(
+            "points",
+            allExpanded ? "18 15 12 9 6 15" : "6 9 12 15 18 9",
+          );
+      }
 
-      document.getElementById('pageBody').innerHTML = `
+      // ── Main trend view renderer ───────────────────────────────────────────────
+      function renderTrendView(dates) {
+        // Destroy any old charts
+        for (const [id, chart] of Object.entries(chartInstances)) {
+          try {
+            chart.destroy();
+          } catch (e) {}
+        }
+        chartInstances = {};
+        allExpanded = false;
+
+        const trendData = buildTrendData(dates);
+        renderTrendKPIs(trendData, dates);
+
+        const summaryRows = renderTrendMarketTable(trendData, dates);
+        const dateRange = dates[0] + " → " + dates[dates.length - 1];
+
+        document.getElementById("pageBody").innerHTML = `
         <div class="table-section">
           <div class="table-section-header">
             <div>
@@ -1207,42 +2074,44 @@
           </table>
         </div>`;
 
-      document.getElementById('pageFooter').innerHTML =
-        `Data source: Google Sheets (ProxyLogs) &nbsp;·&nbsp; Trend: ${dateRange} &nbsp;·&nbsp; Timezone: America/New_York (EST/EDT)`;
-    }
-
-    // ── Bootstrap ─────────────────────────────────────────────────────────────
-    Chart.register(ChartDataLabels);
-    Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    Chart.defaults.color = '#6b7280';
-
-    (async function init() {
-      try {
-        allRows = await fetchSheetData();
-
-        if (allRows.length === 0) {
-          showError('No rows found in the Google Sheet. Run proxyusagelogs.js to populate it.');
-          return;
-        }
-
-        // Collect unique dates
-        availDates = [...new Set(allRows.map(r => r.date))].sort();
-
-        // Populate date selector and multi-select dropdown
-        populateDateSelect(availDates);
-
-        // Default to most recent date
-        selectedDate = [...availDates].sort().reverse()[0];
-        document.getElementById('dateSelect').value = selectedDate;
-
-        // Render single date view by default
-        onDateChange(selectedDate);
-
-      } catch (err) {
-        showError(err.message || 'Unknown error fetching Google Sheet data.');
-        console.error(err);
+        document.getElementById("pageFooter").innerHTML =
+          `Data source: Google Sheets (ProxyLogs) &nbsp;·&nbsp; Trend: ${dateRange} &nbsp;·&nbsp; Timezone: America/New_York (EST/EDT)`;
       }
-    })();
-  </script>
-</body>
+
+      // ── Bootstrap ─────────────────────────────────────────────────────────────
+      Chart.register(ChartDataLabels);
+      Chart.defaults.font.family =
+        "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      Chart.defaults.color = "#6b7280";
+
+      (async function init() {
+        try {
+          allRows = await fetchSheetData();
+
+          if (allRows.length === 0) {
+            showError(
+              "No rows found in the Google Sheet. Run proxyusagelogs.js to populate it.",
+            );
+            return;
+          }
+
+          // Collect unique dates
+          availDates = [...new Set(allRows.map((r) => r.date))].sort();
+
+          // Populate date selector and multi-select dropdown
+          populateDateSelect(availDates);
+
+          // Default to most recent date
+          selectedDate = [...availDates].sort().reverse()[0];
+          document.getElementById("dateSelect").value = selectedDate;
+
+          // Render single date view by default
+          onDateChange(selectedDate);
+        } catch (err) {
+          showError(err.message || "Unknown error fetching Google Sheet data.");
+          console.error(err);
+        }
+      })();
+    </script>
+  </body>
 </html>
