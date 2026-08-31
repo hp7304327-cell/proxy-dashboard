@@ -484,6 +484,22 @@
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 7px;
+        cursor: pointer;
+      }
+      .api-card-header:hover {
+        background: #f3f4f6;
+      }
+      .api-card-toggle {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .api-card-toggle svg {
+        transition: transform 0.2s;
+        color: #9ca3af;
+      }
+      .api-card-toggle svg.expanded {
+        transform: rotate(90deg);
       }
       .api-title {
         display: flex;
@@ -497,6 +513,12 @@
         font-size: 13px;
         font-weight: 700;
         color: #1f2937;
+      }
+      .api-card-body {
+        display: block;
+      }
+      .api-card-body.collapsed {
+        display: none;
       }
       .api-pills {
         display: flex;
@@ -1038,8 +1060,11 @@
 
             apiBlocks += `
             <div class="api-card">
-              <div class="api-card-header">
-                <div class="api-title"><span class="api-bolt">⚡</span><span class="api-name-text">${escHtml(api.api)}</span></div>
+              <div class="api-card-header" onclick="toggleApiCard('${api.api.replace(/[^a-zA-Z0-9]/g, '_')}')">
+                <div class="api-card-toggle">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="chevron expanded"><polyline points="9 18 15 12 9 6"/></svg>
+                  <span class="api-bolt">⚡</span><span class="api-name-text">${escHtml(api.api)}</span>
+                </div>
                 <div class="api-pills">
                   <span class="pill pill-success">✓ ${fmtNum(aSuccess)} success</span>
                   <span class="pill pill-failed">✗ ${fmtNum(aFailed)} failed</span>
@@ -1047,14 +1072,16 @@
                   <span class="pill pill-total">Σ ${fmtNum(aTotal)} total</span>
                 </div>
               </div>
-              <div class="charts-grid">
-                <div class="chart-col">
-                  <div class="chart-col-label success-col-label"><span class="col-dot success-dot"></span>SUCCESS</div>
-                  ${successChart}
-                </div>
-                <div class="chart-col">
-                  <div class="chart-col-label failed-col-label"><span class="col-dot failed-dot"></span>FAILED</div>
-                  ${failedChart}
+              <div class="api-card-body" id="body_${api.api.replace(/[^a-zA-Z0-9]/g, '_')}">
+                <div class="charts-grid">
+                  <div class="chart-col">
+                    <div class="chart-col-label success-col-label"><span class="col-dot success-dot"></span>SUCCESS</div>
+                    ${successChart}
+                  </div>
+                  <div class="chart-col">
+                    <div class="chart-col-label failed-col-label"><span class="col-dot failed-dot"></span>FAILED</div>
+                    ${failedChart}
+                  </div>
                 </div>
               </div>
             </div>`;
@@ -1225,6 +1252,17 @@
         row.style.display = isOpen ? "none" : "table-row";
         if (chevron) chevron.classList.toggle("open", !isOpen);
         if (!isOpen) initChartsInRow(id);
+      }
+
+      // ── Toggle API card ───────────────────────────────────────────────────────
+      function toggleApiCard(id) {
+        const body = document.getElementById("body_" + id);
+        const card = body ? body.closest('.api-card') : null;
+        const chevron = card ? card.querySelector('.chevron') : null;
+        if (!body) return;
+        const isOpen = !body.classList.contains('collapsed');
+        body.classList.toggle('collapsed', isOpen);
+        if (chevron) chevron.classList.toggle('expanded', !isOpen);
       }
 
       // ── Expand / collapse all ─────────────────────────────────────────────────
@@ -1573,8 +1611,11 @@
 
             apiBlocks += `
             <div class="api-card">
-              <div class="api-card-header">
-                <div class="api-title"><span class="api-bolt">⚡</span><span class="api-name-text">${escHtml(apiName)}</span></div>
+              <div class="api-card-header" onclick="toggleApiCard('trend_${apiName.replace(/[^a-zA-Z0-9]/g, '_')}')">
+                <div class="api-card-toggle">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="chevron expanded"><polyline points="9 18 15 12 9 6"/></svg>
+                  <span class="api-bolt">⚡</span><span class="api-name-text">${escHtml(apiName)}</span>
+                </div>
                 <div class="api-pills">
                   <span class="pill pill-success">✓ ${fmtNum(aSuccess)} success</span>
                   <span class="pill pill-failed">✗ ${fmtNum(aFailed)} failed</span>
@@ -1582,14 +1623,16 @@
                   <span class="pill pill-total">Σ ${fmtNum(aTotal)} total</span>
                 </div>
               </div>
-              <div class="charts-grid">
-                <div class="chart-col">
-                  <div class="chart-col-label trend-col-label"><span class="col-dot trend-dot"></span>SUCCESS TREND</div>
-                  ${successTrendChart}
-                </div>
-                <div class="chart-col">
-                  <div class="chart-col-label failed-col-label"><span class="col-dot failed-dot"></span>FAILED TREND</div>
-                  ${failedTrendChart}
+              <div class="api-card-body" id="body_trend_${apiName.replace(/[^a-zA-Z0-9]/g, '_')}">
+                <div class="charts-grid">
+                  <div class="chart-col">
+                    <div class="chart-col-label trend-col-label"><span class="col-dot trend-dot"></span>SUCCESS TREND</div>
+                    ${successTrendChart}
+                  </div>
+                  <div class="chart-col">
+                    <div class="chart-col-label failed-col-label"><span class="col-dot failed-dot"></span>FAILED TREND</div>
+                    ${failedTrendChart}
+                  </div>
                 </div>
               </div>
             </div>`;
