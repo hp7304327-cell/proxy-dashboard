@@ -809,6 +809,7 @@
       let initialised = {};
       let allExpanded = false;
       let selectedDates = []; // for range selection
+      let apiCardCounter = 0; // Counter for unique API card IDs
 
       // ── Number formatter: K / M ───────────────────────────────────────────────
       function fmtNum(n) {
@@ -921,6 +922,7 @@
 
       // ── KPI strip ─────────────────────────────────────────────────────────────
       function renderKPIs(markets) {
+        apiCardCounter = 0; // Reset counter for new view
         let totalAPIs = 0,
           totalSuccess = 0,
           totalFailed = 0;
@@ -1060,7 +1062,7 @@
 
             apiBlocks += `
             <div class="api-card">
-              <div class="api-card-header" data-api-id="${api.api.replace(/[^a-zA-Z0-9]/g, '_')}">
+              <div class="api-card-header" data-api-id="api_${apiCardCounter}">
                 <div class="api-card-toggle">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="chevron expanded"><polyline points="9 18 15 12 9 6"/></svg>
                   <span class="api-bolt">⚡</span><span class="api-name-text">${escHtml(api.api)}</span>
@@ -1072,7 +1074,7 @@
                   <span class="pill pill-total">Σ ${fmtNum(aTotal)} total</span>
                 </div>
               </div>
-              <div class="api-card-body" id="body_${api.api.replace(/[^a-zA-Z0-9]/g, '_')}">
+              <div class="api-card-body" id="body_api_${apiCardCounter}">
                 <div class="charts-grid">
                   <div class="chart-col">
                     <div class="chart-col-label success-col-label"><span class="col-dot success-dot"></span>SUCCESS</div>
@@ -1085,6 +1087,7 @@
                 </div>
               </div>
             </div>`;
+            apiCardCounter++;
           }
 
           summaryRows += `
@@ -1432,6 +1435,7 @@
 
       // ── Render KPIs for trend mode (totals across selected dates) ─────────────
       function renderTrendKPIs(trendData, dates) {
+        apiCardCounter = 0; // Reset counter for trend view
         const markets = new Set(trendData.map((r) => r.market));
         const apis = new Set(trendData.map((r) => r.api));
         let totalSuccess = 0,
@@ -1620,7 +1624,7 @@
 
             apiBlocks += `
             <div class="api-card">
-              <div class="api-card-header" data-api-id="trend_${apiName.replace(/[^a-zA-Z0-9]/g, '_')}">
+              <div class="api-card-header" data-api-id="trend_api_${apiCardCounter}">
                 <div class="api-card-toggle">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="chevron expanded"><polyline points="9 18 15 12 9 6"/></svg>
                   <span class="api-bolt">⚡</span><span class="api-name-text">${escHtml(apiName)}</span>
@@ -1632,7 +1636,7 @@
                   <span class="pill pill-total">Σ ${fmtNum(aTotal)} total</span>
                 </div>
               </div>
-              <div class="api-card-body" id="body_trend_${apiName.replace(/[^a-zA-Z0-9]/g, '_')}">
+              <div class="api-card-body" id="body_trend_api_${apiCardCounter}">
                 <div class="charts-grid">
                   <div class="chart-col">
                     <div class="chart-col-label trend-col-label"><span class="col-dot trend-dot"></span>SUCCESS TREND</div>
@@ -1645,6 +1649,7 @@
                 </div>
               </div>
             </div>`;
+            apiCardCounter++;
           }
 
           summaryRows += `
